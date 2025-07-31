@@ -2,8 +2,8 @@
 
 Este es un proyecto web interactivo construido con **Astro** y **Tailwind CSS** que permite a los usuarios subir un archivo CSV con datos de casos, procesarlos y visualizar análisis de rendimiento detallados. La aplicación es completamente interactiva, cuenta con modo oscuro y permite descargar los datos filtrados para su uso en otras herramientas como Google Sheets.
 
-![Captura de Pantalla de la Aplicación](https://i.imgur.com/b2365d.png) 
-*(Nota: Reemplaza esta imagen con una captura actualizada de tu proyecto)*
+![Captura de Pantalla de la Aplicación](/public/screenshot_light.png) 
+![Captura de Pantalla de la Aplicación modo oscuro](/public/screenshot_dark.png) 
 
 ---
 
