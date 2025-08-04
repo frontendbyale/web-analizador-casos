@@ -1,5 +1,3 @@
-// src/js/analysis.js
-
 const timeBuckets = ['Menos de 24hs', 'Entre 24hs y 48hs', 'Entre 48hs y 72hs', 'Más de 72hs'];
 const agents = ['jsotelo', 'cyvarela', 'fortega'];
 
@@ -32,8 +30,20 @@ export function processGeneralAnalysis(data, month, year) {
         return d && d.getFullYear() === year && d.getMonth() === month;
     });
     
-    // ... (El resto de la lógica de análisis que ya teníamos)
+    // --- NUEVOS CÁLCULOS AQUÍ ---
     const closedCases = filteredCases.filter(c => c['Estado Case'] === 'Closed');
+    const openCases = filteredCases.filter(c => c['Estado Case'] !== 'Closed'); // 1. Casos no cerrados (abiertos)
+
+    // 2. Conteo de casos abiertos asignados a cada agente
+    const openCasesAssignedTo = Object.fromEntries(agents.map(agent => [agent, 0]));
+    openCases.forEach(c => {
+        const assignedUser = c['Usuario Asignado'];
+        if (agents.includes(assignedUser)) {
+            openCasesAssignedTo[assignedUser]++;
+        }
+    });
+
+    // --- ANÁLISIS ANTERIORES (SIN CAMBIOS) ---
     const overallAgentActivity = Object.fromEntries(agents.map(agent => [agent, { created: 0, closed: 0 }]));
     filteredCases.forEach(c => {
         if (agents.includes(c['Empleado Creación'])) overallAgentActivity[c['Empleado Creación']].created++;
@@ -62,7 +72,16 @@ export function processGeneralAnalysis(data, month, year) {
         agentPerformance[closer].byReason[reason].stats[bucket]++;
     });
 
-    return { filteredCases, closedCases, overallAgentActivity, overallClosureStats, agentPerformance };
+    // Retornamos todo, incluyendo los nuevos datos
+    return { 
+        filteredCases, 
+        closedCases, 
+        openCases, // <-- Nuevo
+        openCasesAssignedTo, // <-- Nuevo
+        overallAgentActivity, 
+        overallClosureStats, 
+        agentPerformance 
+    };
 }
 
 /**
