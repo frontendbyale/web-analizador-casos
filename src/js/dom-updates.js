@@ -32,7 +32,7 @@ export function displayGeneralResults(analysis, title, selectedYear) {
     // El resto del innerHTML para los resultados...
     resultsDiv.innerHTML = `
             <div class="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700">
-                <h2 class="text-2xl font-bold text-slate-700 dark:text-slate-200 mb-4">Resumen General de ${title} de ${selectedYear}</h2>
+                <h2 class="text-2xl font-bold text-slate-700 dark:text-slate-200 mb-4">Resumen General de ${title}</h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="grid grid-cols-2 gap-4 text-center">
                         <div class="bg-white dark:bg-slate-700/50 p-4 rounded-lg shadow"><div class="text-3xl font-bold text-indigo-600 dark:text-indigo-400">${filteredCases.length}</div><div class="text-sm text-slate-500 dark:text-slate-400">Casos Totales</div></div>
