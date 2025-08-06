@@ -95,16 +95,24 @@ export function processWeeklyAnalysis(data) {
     oneWeekAgo.setDate(today.getDate() - 7);
     oneWeekAgo.setHours(0, 0, 0, 0);
 
-    let processedData = data.map(row => ({ ...row,
+    // --- CAMBIO CLAVE AQUÍ ---
+    let processedData = data.map(row => ({
+        ...row,
+        // 1. Conservamos el HTML original en una nueva propiedad 'caseHtml'
+        'caseHtml': row['Nro. Case'], 
+        // 2. Extraemos el número limpio para la lógica de duplicados y filtros
         'Nro de Case': row['Nro. Case'] ? parseInt(row['Nro. Case'].match(/>(\d+)</)?.[1], 10) : null,
         'Fecha de Creacion': row['Fecha Creación (FFHH)'] ? new Date(row['Fecha Creación (FFHH)']) : null,
     })).filter(row => row['Nro de Case'] && row['Fecha de Creacion'] && row['Fecha de Creacion'] >= oneWeekAgo);
     
+    // Usamos el 'Nro de Case' limpio para eliminar duplicados
     const uniqueCases = Array.from(new Map(processedData.map(item => [item['Nro de Case'], item])).values());
     
     const claimsByReason = uniqueCases.reduce((acc, caseItem) => {
         const reason = caseItem['Razón'] || 'No Especificado';
-        if (!acc[reason]) acc[reason] = [];
+        if (!acc[reason]) {
+            acc[reason] = [];
+        }
         acc[reason].push(caseItem);
         return acc;
     }, {});

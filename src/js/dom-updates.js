@@ -128,12 +128,13 @@ export function displayWeeklyResults(analysis) {
                         </h3>
                         <ul class="text-sm space-y-1 max-h-48 overflow-y-auto pr-2">
                             ${cases.map(c => {
-                                // Formateamos la fecha para que sea más legible
                                 const creationDate = c['Fecha de Creacion'].toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                                // --- CAMBIO CLAVE AQUÍ ---
+                                // 3. Insertamos el HTML del caso directamente
                                 return `
                                     <li class="text-slate-700 dark:text-slate-300">
                                         <span class="font-semibold text-slate-500 dark:text-slate-400">${creationDate}</span> - 
-                                        <strong>Case #${c['Nro de Case']}:</strong> ${c['Subrazón'] || 'Sin subrazón'}
+                                        <strong>${c['caseHtml'] || `Case #${c['Nro de Case']}`}:</strong> ${c['Subrazón'] || 'Sin subrazón'}
                                     </li>
                                 `;
                             }).join('')}
