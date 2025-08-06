@@ -134,7 +134,7 @@ export function displayWeeklyResults(analysis) {
                                 return `
                                     <li class="text-slate-700 dark:text-slate-300">
                                         <span class="font-semibold text-slate-500 dark:text-slate-400">${creationDate}</span> - 
-                                        <strong>${c['caseHtml'] || `Case #${c['Nro de Case']}`}:</strong> ${c['Subrazón'] || 'Sin subrazón'}
+                                        <strong>Case #${c['caseHtml'] || `Case #${c['Nro de Case']}`}:</strong> ${c['Subrazón'] || 'Sin subrazón'}
                                     </li>
                                 `;
                             }).join('')}
