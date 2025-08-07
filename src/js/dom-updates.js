@@ -91,7 +91,7 @@ export function displayGeneralResults(analysis, title) {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `casos_${monthName}_${selectedYear}_procesados.csv`;
+            a.download = `casos_${title}_procesados.csv`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
