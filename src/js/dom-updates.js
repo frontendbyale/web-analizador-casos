@@ -210,8 +210,6 @@ function renderAgentPerformanceChart(agent, agentOverallStats) {
                     beginAtZero: true,
                     ticks: { 
                         color: chartFontColor,
-                        // Formatear para que solo muestre enteros en el eje
-                        callback: function(value) { if (value % 1 === 0) { return value; } }
                     },
                     grid: { color: gridColor }
                 },
@@ -302,7 +300,7 @@ export function displayGeneralResults(analysis, lastMonthName, lastYear) {
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 ${Object.entries(agentPerformance).filter(([,data])=>data.totalClosed > 0).map(([agent, data]) => `
                     <div class="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 space-y-4">
-                        <div class="relative h-32 mb-3">
+                        <div class="relative h-48 mb-3">
                             <canvas id="agent-chart-${agent}"></canvas>
                         </div>
                         <div>
