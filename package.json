@@ -11,6 +11,7 @@
   "dependencies": {
     "@tailwindcss/vite": "^4.1.11",
     "astro": "^5.12.6",
+    "chart.js": "^4.5.0",
     "papaparse": "^5.5.3",
     "tailwindcss": "^4.1.11",
     "xlsx": "^0.18.5"

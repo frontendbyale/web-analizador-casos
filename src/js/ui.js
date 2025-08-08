@@ -1,33 +1,6 @@
 // src/js/ui.js
 
-/**
- * Aplica el tema (claro/oscuro) a la página y guarda la preferencia.
- * @param {boolean} isDark - True si se debe aplicar el modo oscuro.
- */
-function applyTheme(isDark) {
-    const darkIcon = document.getElementById('theme-toggle-dark-icon');
-    const lightIcon = document.getElementById('theme-toggle-light-icon');
-    document.documentElement.classList.toggle('dark', isDark);
-    if (lightIcon) lightIcon.classList.toggle('hidden', !isDark);
-    if (darkIcon) darkIcon.classList.toggle('hidden', isDark);
-    localStorage.setItem('color-theme', isDark ? 'dark' : 'light');
-}
 
-/**
- * Inicializa el modo oscuro basándose en las preferencias del sistema o del usuario.
- */
-export function initializeTheme() {
-    const themeToggleBtn = document.getElementById('theme-toggle');
-    if (!themeToggleBtn) return;
-
-    const isDarkMode = localStorage.getItem('color-theme') === 'dark' || 
-                       (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    applyTheme(isDarkMode);
-
-    themeToggleBtn.addEventListener('click', () => {
-        applyTheme(!document.documentElement.classList.contains('dark'));
-    });
-}
 
 /**
  * Inicializa la funcionalidad de las pestañas de navegación.

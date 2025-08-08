@@ -1,6 +1,83 @@
 // src/js/dom-updates.js
 import Papa from 'papaparse'; // PapaParse se usa aquí solo para la descarga
 
+// Variable para guardar la instancia del gráfico y poder destruirla antes de crear una nueva
+let closureChartInstance = null;
+
+/**
+ * Renderiza el gráfico de torta de tiempos de cierre.
+ * @param {Object} overallClosureStats - Los datos para el gráfico.
+ * @param {number} totalClosed - El número total de casos cerrados.
+ */
+function renderClosureChart(overallClosureStats, totalClosed) {
+    const ctx = document.getElementById('closureTimeChart');
+    if (!ctx) return;
+
+    // Si ya existe un gráfico, lo destruimos para evitar conflictos
+    if (closureChartInstance) {
+        closureChartInstance.destroy();
+    }
+
+    const labels = Object.keys(overallClosureStats);
+    const data = Object.values(overallClosureStats);
+
+    const isDarkMode = document.documentElement.classList.contains('dark');
+    const chartFontColor = isDarkMode ? '#cbd5e1' : '#475569'; // slate-300 / slate-600
+
+    closureChartInstance = new Chart(ctx, {
+        type: 'pie', // 'pie' o 'doughnut' para gráfico de torta
+        data: {
+            labels: labels,
+            datasets: [{
+                label: '# de Casos',
+                data: data,
+                backgroundColor: [
+                    'rgba(79, 70, 229, 0.7)',  // Indigo
+                    'rgba(5, 150, 105, 0.7)',   // Emerald
+                    'rgba(217, 119, 6, 0.7)',  // Amber
+                    'rgba(220, 38, 38, 0.7)'   // Red
+                ],
+                borderColor: isDarkMode ? '#1e293b' : '#ffffff', // slate-800 / white
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        color: chartFontColor,
+                        font: {
+                            size: 12
+                        }
+                    }
+                },
+                title: {
+                    display: true,
+                    text: 'Distribución de Tiempos de Cierre',
+                    color: chartFontColor,
+                    font: {
+                        size: 16,
+                        weight: 'bold'
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.raw || 0;
+                            const percentage = totalClosed > 0 ? ((value / totalClosed) * 100).toFixed(1) : 0;
+                            return `${label}: ${value} casos (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
 /**
  * Muestra los resultados del análisis general en la página.
  * @param {Object} analysis - Los datos analizados.
@@ -35,6 +112,9 @@ export function displayGeneralResults(analysis, title) {
       resultsDiv.innerHTML = `
         <div class="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700">
             <h2 class="text-2xl font-bold text-slate-700 dark:text-slate-200 mb-4">Resumen General de ${title}</h2>
+            <div class="relative h-64 md:h-80 mb-1">
+                <canvas id="closureTimeChart"></canvas>
+            </div>
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center mb-8">
                 <div class="bg-white dark:bg-slate-700/50 p-4 rounded-lg shadow"><div class="text-3xl font-bold text-indigo-600 dark:text-indigo-400">${filteredCases.length}</div><div class="text-sm text-slate-500 dark:text-slate-400">Casos Totales</div></div>
                 <div class="bg-white dark:bg-slate-700/50 p-4 rounded-lg shadow"><div class="text-3xl font-bold text-green-600 dark:text-green-400">${closedCases.length}</div><div class="text-sm text-slate-500 dark:text-slate-400">Casos Cerrados</div></div>
@@ -82,6 +162,12 @@ export function displayGeneralResults(analysis, title) {
         </div>
         ${downloadHTML}
     `;
+
+    // --- LLAMADA PARA RENDERIZAR EL GRÁFICO ---
+    // Se llama después de que el canvas#closureTimeChart ya exista en el DOM.
+    if (closedCases.length > 0) {
+        renderClosureChart(overallClosureStats, closedCases.length);
+    }
 
     if (finalCsvData.length > 0) {
         document.getElementById('downloadBtn').addEventListener('click', () => {

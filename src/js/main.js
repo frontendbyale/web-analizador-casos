@@ -1,11 +1,47 @@
 // src/js/main.js
 import Papa from 'papaparse';
-import { initializeTheme, initializeTabs } from './ui.js';
+import {initializeTabs } from './ui.js';
 import { processGeneralAnalysis, processWeeklyAnalysis } from './analysis.js';
 import { displayGeneralResults, displayWeeklyResults } from './dom-updates.js';
 
 // --- Estado Global de la Aplicación ---
 let processedDataStore = null;
+let lastGeneralAnalysis = null;
+let lastMonthName = '';
+let lastYear = 0;
+
+/**
+ * Aplica el tema (claro/oscuro) a la página y guarda la preferencia.
+ * @param {boolean} isDark - True si se debe aplicar el modo oscuro.
+ */
+function applyTheme(isDark) {
+    const darkIcon = document.getElementById('theme-toggle-dark-icon');
+    const lightIcon = document.getElementById('theme-toggle-light-icon');
+    document.documentElement.classList.toggle('dark', isDark);
+    if (lightIcon) lightIcon.classList.toggle('hidden', !isDark);
+    if (darkIcon) darkIcon.classList.toggle('hidden', isDark);
+    localStorage.setItem('color-theme', isDark ? 'dark' : 'light');
+
+    if (lastGeneralAnalysis) {
+        displayGeneralResults(lastGeneralAnalysis, lastMonthName, lastYear);
+    }
+}
+
+/**
+ * Inicializa el modo oscuro basándose en las preferencias del sistema o del usuario.
+ */
+export function initializeTheme() {
+    const themeToggleBtn = document.getElementById('theme-toggle');
+    if (!themeToggleBtn) return;
+
+    const isDarkMode = localStorage.getItem('color-theme') === 'dark' || 
+                       (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    applyTheme(isDarkMode);
+
+    themeToggleBtn.addEventListener('click', () => {
+        applyTheme(!document.documentElement.classList.contains('dark'));
+    });
+}
 
 // --- Inicialización de la Interfaz ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -30,6 +66,8 @@ function setupEventListeners() {
     const processBtn = document.getElementById('processBtn');
     processBtn.addEventListener('click', () => {
         const csvFileInput = document.getElementById('csvFile');
+        const monthSelect = document.getElementById('monthSelect');
+        const yearInput = document.getElementById('yearInput');
         const file = csvFileInput.files[0];
         if (!file) { alert("Por favor, selecciona un archivo CSV."); return; }
         
@@ -39,17 +77,22 @@ function setupEventListeners() {
         Papa.parse(file, {
             header: true, skipEmptyLines: true,
             complete: (results) => {
-                processedDataStore = results.data; // Guardamos los datos
-                const selectedMonth = parseInt(document.getElementById('monthSelect').value, 10);
-                const selectedYear = parseInt(document.getElementById('yearInput').value, 10);
+                processedDataStore = results.data;
+                const selectedMonth = parseInt(monthSelect.value, 10);
+                const selectedYear = parseInt(yearInput.value, 10);
                 
-                const analysis = processGeneralAnalysis(processedDataStore, selectedMonth, selectedYear);
-                const title = `${document.getElementById('monthSelect').options[selectedMonth].text} de ${selectedYear}`;
-                displayGeneralResults(analysis, title, selectedYear);
+                // Guardamos el análisis y los parámetros para poder re-renderizar
+                lastGeneralAnalysis = processGeneralAnalysis(processedDataStore, selectedMonth, selectedYear);
+                lastMonthName = monthSelect.options[selectedMonth].text;
+                lastYear = selectedYear;
+                
+                // Mostramos los resultados por primera vez
+                displayGeneralResults(lastGeneralAnalysis, lastMonthName, lastYear);
                 
                 processBtn.disabled = false;
                 processBtn.textContent = "Analizar Período";
-                document.getElementById('processBtnWeek').disabled = false;
+                const weeklyBtn = document.getElementById('processBtnWeek');
+                if (weeklyBtn) weeklyBtn.disabled = false;
             }
         });
     });
