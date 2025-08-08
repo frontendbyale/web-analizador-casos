@@ -4,6 +4,7 @@ import Papa from 'papaparse'; // PapaParse se usa aquí solo para la descarga
 // Variables para guardar las instancias de los gráficos y poder destruirla antes de crear una nueva
 let closureChartInstance = null;
 let weeklyChartInstance = null;
+let agentChartInstances = null;
 
 /**
  * Renderiza el gráfico de torta de tiempos de cierre.
@@ -141,6 +142,66 @@ function renderWeeklyChart(claimsByReason) {
     });
 }
 
+/**
+ * --- NUEVA FUNCIÓN ---
+ * Renderiza un gráfico de torta individual para el rendimiento de un agente.
+ * @param {string} agent - El nombre del agente (para el ID del canvas).
+ * @param {Object} agentOverallStats - Los datos de rendimiento del agente.
+ */
+function renderAgentPerformanceChart(agent, agentOverallStats) {
+    const canvasId = `agent-chart-${agent}`;
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) {
+        console.error(`Canvas con id ${canvasId} no encontrado.`);
+        return;
+    }
+
+
+    const labels = Object.keys(agentOverallStats);
+    const data = Object.values(agentOverallStats);
+    const totalCases = data.reduce((a, b) => a + b, 0);
+    const isDarkMode = document.documentElement.classList.contains('dark');
+    const chartFontColor = isDarkMode ? '#cbd5e1' : '#475569';
+
+    agentChartInstances = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data,
+                backgroundColor: ['rgba(79, 70, 229, 0.7)', 'rgba(5, 150, 105, 0.7)', 'rgba(217, 119, 6, 0.7)', 'rgba(220, 38, 38, 0.7)'],
+                borderColor: isDarkMode ? '#1e293b' : '#ffffff',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        color: chartFontColor,
+                        font: {
+                            size: 12
+                        }
+                    }},
+                title: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const value = context.raw || 0;
+                            const percentage = totalCases > 0 ? ((value / totalCases) * 100).toFixed(1) : 0;
+                            return `${context.label}: ${value} (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+
 
 /**
  * Muestra los resultados del análisis general en la página.
@@ -203,8 +264,13 @@ export function displayGeneralResults(analysis, lastMonthName, lastYear) {
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 ${Object.entries(agentPerformance).filter(([,data])=>data.totalClosed > 0).map(([agent, data]) => `
                     <div class="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 space-y-4">
-                        <h3 class="text-xl font-bold text-indigo-700 dark:text-indigo-400">${agent}</h3>
-                        <p class="text-sm text-slate-500 dark:text-slate-400 -mt-2">Total de casos cerrados: <strong>${data.totalClosed}</strong></p>
+                        <div class="relative h-32 mb-3">
+                            <canvas id="agent-chart-${agent}"></canvas>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-bold text-indigo-700 dark:text-indigo-400 mb-2">${agent}</h3>
+                            <p class="text-sm text-slate-500 dark:text-slate-400 -mt-2">Total de casos cerrados: <strong>${data.totalClosed}</strong></p>
+                        </div>
                         <div>
                             <h4 class="font-semibold text-slate-600 dark:text-slate-300 mb-2">Rendimiento General del Agente</h4>
                             <table class="w-full text-sm"><tbody>${Object.entries(data.overall).map(([bucket, count]) => `<tr class="border-b border-slate-100 dark:border-slate-700"><td class="py-1.5 pr-2 text-slate-600 dark:text-slate-400">${bucket}</td><td class="py-1.5 font-mono text-right text-slate-800 dark:text-slate-300">${((count/data.totalClosed)*100).toFixed(1)}%</td><td class="py-1.5 pl-2 font-mono text-slate-500 dark:text-slate-400 text-right">(${count})</td></tr>`).join('')}</tbody></table>
@@ -226,12 +292,20 @@ export function displayGeneralResults(analysis, lastMonthName, lastYear) {
         </div>
         ${downloadHTML}
     `;
-
-    // --- LLAMADA PARA RENDERIZAR EL GRÁFICO ---
-    // Se llama después de que el canvas#closureTimeChart ya exista en el DOM.
+    
+    // --- LLAMADAS PARA RENDERIZAR TODOS LOS GRÁFICOS ---
     if (closedCases.length > 0) {
         renderClosureChart(overallClosureStats, closedCases.length);
     }
+
+// Iteramos sobre los agentes para crear su gráfico individual
+    Object.entries(agentPerformance).forEach(([agent, data]) => {
+        if (data.totalClosed > 0) {
+            renderAgentPerformanceChart(agent, data.overall);
+        }
+    });
+    
+  
 
     if (finalCsvData.length > 0) {
         document.getElementById('downloadBtn').addEventListener('click', () => {
