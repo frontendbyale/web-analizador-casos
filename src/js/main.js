@@ -2,7 +2,7 @@
 import Papa from 'papaparse';
 import {initializeTabs } from './ui.js';
 import { processGeneralAnalysis, processWeeklyAnalysis } from './analysis.js';
-import { displayGeneralResults, displayWeeklyResults } from './dom-updates.js';
+import { displayGeneralResults, displayWeeklyResults, renderAllCharts } from './dom-updates.js';
 
 // --- Estado Global de la Aplicación ---
 let processedDataStore = null;
@@ -25,6 +25,7 @@ function applyTheme(isDark) {
 
     if (lastGeneralAnalysis) {
         displayGeneralResults(lastGeneralAnalysis, lastMonthName, lastYear);
+        renderAllCharts(lastGeneralAnalysis);
     }
     if (lastWeeklyAnalysis) { // <-- NUEVO
         displayWeeklyResults(lastWeeklyAnalysis);
@@ -92,6 +93,7 @@ function setupEventListeners() {
                 
                 // Mostramos los resultados por primera vez
                 displayGeneralResults(lastGeneralAnalysis, lastMonthName, lastYear);
+                renderAllCharts(lastGeneralAnalysis);
                 
                 processBtn.disabled = false;
                 processBtn.textContent = "Analizar Período";

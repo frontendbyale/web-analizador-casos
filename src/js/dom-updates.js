@@ -4,7 +4,7 @@ import Papa from 'papaparse'; // PapaParse se usa aquí solo para la descarga
 // Variables para guardar las instancias de los gráficos y poder destruirla antes de crear una nueva
 let closureChartInstance = null;
 let weeklyChartInstance = null;
-let agentChartInstances = null;
+let agentChartInstances = {};
 
 /**
  * Renderiza el gráfico de torta de tiempos de cierre.
@@ -156,52 +156,90 @@ function renderAgentPerformanceChart(agent, agentOverallStats) {
         return;
     }
 
+    if (agentChartInstances[agent]) {
+        agentChartInstances[agent].destroy();
+    }
 
     const labels = Object.keys(agentOverallStats);
     const data = Object.values(agentOverallStats);
     const totalCases = data.reduce((a, b) => a + b, 0);
+
     const isDarkMode = document.documentElement.classList.contains('dark');
     const chartFontColor = isDarkMode ? '#cbd5e1' : '#475569';
+    const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
 
-    agentChartInstances = new Chart(ctx, {
-        type: 'pie',
+    // Paleta de colores consistente con el gráfico principal
+    const backgroundColors = [
+        'rgba(79, 70, 229, 0.7)',  // Menos de 24hs -> Indigo
+        'rgba(5, 150, 105, 0.7)',   // 24-48hs -> Emerald
+        'rgba(217, 119, 6, 0.7)',  // 48-72hs -> Amber
+        'rgba(220, 38, 38, 0.7)'   // +72hs -> Red
+    ];
+
+    agentChartInstances[agent] = new Chart(ctx, {
+        type: 'bar', // <-- Cambiado a 'bar'
         data: {
             labels: labels,
             datasets: [{
+                label: 'Cantidad de Casos',
                 data: data,
-                backgroundColor: ['rgba(79, 70, 229, 0.7)', 'rgba(5, 150, 105, 0.7)', 'rgba(217, 119, 6, 0.7)', 'rgba(220, 38, 38, 0.7)'],
-                borderColor: isDarkMode ? '#1e293b' : '#ffffff',
-                borderWidth: 2
+                backgroundColor: backgroundColors, // <-- Colores consistentes
+                borderColor: backgroundColors.map(color => color.replace('0.7', '1')),
+                borderWidth: 1
             }]
         },
         options: {
+            indexAxis: 'x', // <-- Eje Y como principal para barras horizontales
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        color: chartFontColor,
-                        font: {
-                            size: 12
-                        }
-                    }},
+                legend: { display: false },
                 title: { display: false },
                 tooltip: {
                     callbacks: {
                         label: function(context) {
                             const value = context.raw || 0;
                             const percentage = totalCases > 0 ? ((value / totalCases) * 100).toFixed(1) : 0;
-                            return `${context.label}: ${value} (${percentage}%)`;
+                            return `Casos: ${value} (${percentage}%)`;
                         }
                     }
+                }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    ticks: { 
+                        color: chartFontColor,
+                        // Formatear para que solo muestre enteros en el eje
+                        callback: function(value) { if (value % 1 === 0) { return value; } }
+                    },
+                    grid: { color: gridColor }
+                },
+                y: {
+                    ticks: { color: chartFontColor },
+                    grid: { color: 'transparent' }
                 }
             }
         }
     });
 }
 
+export function renderAllCharts(analysis) {
+    if (!analysis) return;
+    const { closedCases, overallClosureStats, agentPerformance } = analysis;
 
+    // Renderizar gráfico principal
+    if (closedCases.length > 0) {
+        renderClosureChart(overallClosureStats, closedCases.length);
+    }
+    
+    // Renderizar gráficos de agentes
+    Object.entries(agentPerformance).forEach(([agent, data]) => {
+        if (data.totalClosed > 0) {
+            renderAgentPerformanceChart(agent, data.overall);
+        }
+    });
+}
 
 /**
  * Muestra los resultados del análisis general en la página.
@@ -293,17 +331,6 @@ export function displayGeneralResults(analysis, lastMonthName, lastYear) {
         ${downloadHTML}
     `;
     
-    // --- LLAMADAS PARA RENDERIZAR TODOS LOS GRÁFICOS ---
-    if (closedCases.length > 0) {
-        renderClosureChart(overallClosureStats, closedCases.length);
-    }
-
-// Iteramos sobre los agentes para crear su gráfico individual
-    Object.entries(agentPerformance).forEach(([agent, data]) => {
-        if (data.totalClosed > 0) {
-            renderAgentPerformanceChart(agent, data.overall);
-        }
-    });
     
   
 
