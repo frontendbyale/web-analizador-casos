@@ -7,6 +7,7 @@ import { displayGeneralResults, displayWeeklyResults } from './dom-updates.js';
 // --- Estado Global de la Aplicación ---
 let processedDataStore = null;
 let lastGeneralAnalysis = null;
+let lastWeeklyAnalysis = null; 
 let lastMonthName = '';
 let lastYear = 0;
 
@@ -24,6 +25,9 @@ function applyTheme(isDark) {
 
     if (lastGeneralAnalysis) {
         displayGeneralResults(lastGeneralAnalysis, lastMonthName, lastYear);
+    }
+    if (lastWeeklyAnalysis) { // <-- NUEVO
+        displayWeeklyResults(lastWeeklyAnalysis);
     }
 }
 
@@ -105,7 +109,7 @@ function setupEventListeners() {
             alert("Primero debes procesar un archivo en la pestaña 'Análisis General'.");
             return;
         }
-        const analysis = processWeeklyAnalysis(processedDataStore);
-        displayWeeklyResults(analysis);
+        lastWeeklyAnalysis = processWeeklyAnalysis(processedDataStore);
+        displayWeeklyResults(lastWeeklyAnalysis);
     });
 }

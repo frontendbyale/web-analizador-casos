@@ -1,8 +1,9 @@
 // src/js/dom-updates.js
 import Papa from 'papaparse'; // PapaParse se usa aquí solo para la descarga
 
-// Variable para guardar la instancia del gráfico y poder destruirla antes de crear una nueva
+// Variables para guardar las instancias de los gráficos y poder destruirla antes de crear una nueva
 let closureChartInstance = null;
+let weeklyChartInstance = null;
 
 /**
  * Renderiza el gráfico de torta de tiempos de cierre.
@@ -79,11 +80,74 @@ function renderClosureChart(overallClosureStats, totalClosed) {
 }
 
 /**
+ * --- NUEVA FUNCIÓN ---
+ * Renderiza el gráfico de barras para el análisis semanal por razón.
+ * @param {Object} claimsByReason - Los datos de reclamos agrupados por razón.
+ */
+function renderWeeklyChart(claimsByReason) {
+    const ctx = document.getElementById('weeklyAnalysisChart');
+    if (!ctx) return;
+
+    if (weeklyChartInstance) {
+        weeklyChartInstance.destroy();
+    }
+
+    // Preparamos los datos para el gráfico
+    const labels = Object.keys(claimsByReason);
+    const data = labels.map(label => claimsByReason[label].length);
+
+    const isDarkMode = document.documentElement.classList.contains('dark');
+    const chartFontColor = isDarkMode ? '#cbd5e1' : '#475569';
+    const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+
+    weeklyChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Cantidad de Reclamos',
+                data: data,
+                backgroundColor: 'rgba(129, 140, 248, 0.7)', // Indigo
+                borderColor: 'rgba(129, 140, 248, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            indexAxis: 'y', // <-- Gráfico de barras horizontal para mejor lectura
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false // No es necesaria para un solo dataset
+                },
+                title: {
+                    display: true,
+                    text: 'Reclamos por Razón en la Última Semana',
+                    color: chartFontColor,
+                    font: { size: 16, weight: 'bold' }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: { color: chartFontColor },
+                    grid: { color: gridColor }
+                },
+                y: {
+                    ticks: { color: chartFontColor },
+                    grid: { color: 'transparent' }
+                }
+            }
+        }
+    });
+}
+
+
+/**
  * Muestra los resultados del análisis general en la página.
  * @param {Object} analysis - Los datos analizados.
  * @param {string} title - Título para la sección de resultados.
  */
-export function displayGeneralResults(analysis, title) {
+export function displayGeneralResults(analysis, lastMonthName, lastYear) {
     
     const { filteredCases, closedCases, openCases, openCasesAssignedTo, overallAgentActivity, overallClosureStats, agentPerformance } = analysis;
     const resultsDiv = document.getElementById('results');
@@ -111,7 +175,7 @@ export function displayGeneralResults(analysis, title) {
     // El resto del innerHTML para los resultados...
       resultsDiv.innerHTML = `
         <div class="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700">
-            <h2 class="text-2xl font-bold text-slate-700 dark:text-slate-200 mb-4">Resumen General de ${title}</h2>
+            <h2 class="text-2xl font-bold text-slate-700 dark:text-slate-200 mb-4">Resumen General de ${lastMonthName} de ${lastYear}</h2>
             <div class="relative h-64 md:h-80 mb-1">
                 <canvas id="closureTimeChart"></canvas>
             </div>
@@ -206,6 +270,9 @@ export function displayWeeklyResults(analysis) {
             <h2 class="text-2xl font-bold text-slate-700 dark:text-slate-200 mb-4">
                 ${totalClaims} Reclamos desde el ${startDateString}
             </h2>
+            <div class="relative h-80 lg:h-96 mb-2">
+                <canvas id="weeklyAnalysisChart"></canvas>
+            </div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 ${Object.entries(claimsByReason).map(([reason, cases]) => `
                     <div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700">
@@ -230,4 +297,7 @@ export function displayWeeklyResults(analysis) {
             </div>
         </div>
     `;
+
+    // Llamamos a la nueva función para renderizar el gráfico de barras
+    renderWeeklyChart(claimsByReason);
 }
