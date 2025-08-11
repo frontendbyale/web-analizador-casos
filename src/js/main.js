@@ -1,14 +1,15 @@
 // src/js/main.js
 import Papa from 'papaparse';
 import {initializeTabs } from './ui.js';
-import { processGeneralAnalysis, processWeeklyAnalysis, processTopStats } from './analysis.js';
-import { displayGeneralResults, displayWeeklyResults, renderAllCharts, displayTopStats } from './dom-updates.js';
+import { processGeneralAnalysis, processWeeklyAnalysis, processTopStats, processEscalationAnalysis} from './analysis.js';
+import { displayGeneralResults, displayWeeklyResults, renderAllCharts, displayTopStats, displayEscalationResults } from './dom-updates.js';
 
 // --- Estado Global de la Aplicación ---
 let processedDataStore = null;
 let filteredDataStore = null;
 let lastGeneralAnalysis = null;
-let lastWeeklyAnalysis = null; 
+let lastWeeklyAnalysis = null;
+let lastEscalationAnalysis = null;
 let lastMonthName = '';
 let lastYear = 0;
 
@@ -30,6 +31,9 @@ function applyTheme(isDark) {
     }
     if (lastWeeklyAnalysis) { // <-- NUEVO
         displayWeeklyResults(lastWeeklyAnalysis);
+    }
+    if (lastEscalationAnalysis) { // <-- Añade este bloque
+        displayEscalationResults(lastEscalationAnalysis);
     }
 }
 
@@ -101,21 +105,25 @@ function setupEventListeners() {
                 processBtn.textContent = "Analizar Período";
                 const weeklyBtn = document.getElementById('processBtnWeek');
                 const topStatsBtn = document.getElementById('processBtnTopStats');
+                const escaladosBtn = document.getElementById('processBtnEscalados');
                 if (weeklyBtn) weeklyBtn.disabled = false;
                 if (topStatsBtn) topStatsBtn.disabled = false;
+                if (escaladosBtn) escaladosBtn.disabled = false;
             }
         });
     });
 
     // Listener para el Análisis Semanal
     const processBtnWeek = document.getElementById('processBtnWeek');
+    const selectedMonth = parseInt(monthSelect.value, 10);
+    const selectedYear = parseInt(yearInput.value, 10);
     processBtnWeek.disabled = true; // Empieza deshabilitado
     processBtnWeek.addEventListener('click', () => {
         if (!processedDataStore) {
             alert("Primero debes procesar un archivo en la pestaña 'Análisis General'.");
             return;
         }
-        lastWeeklyAnalysis = processWeeklyAnalysis(processedDataStore);
+        lastWeeklyAnalysis = processWeeklyAnalysis(processedDataStore, selectedMonth, selectedYear);
         displayWeeklyResults(lastWeeklyAnalysis);
     });
 
@@ -130,6 +138,19 @@ function setupEventListeners() {
             }
             const analysis = processTopStats(filteredDataStore); 
             displayTopStats(analysis);
+        });
+    }
+
+    const processBtnEscalados = document.getElementById('processBtnEscalados');
+    if(processBtnEscalados) {
+        processBtnEscalados.disabled = true;
+        processBtnEscalados.addEventListener('click', () => {
+            if (!filteredDataStore) {
+                alert("Primero debes procesar un archivo en la pestaña 'Análisis General'.");
+                return;
+            }
+            lastEscalationAnalysis = processEscalationAnalysis(filteredDataStore);
+            displayEscalationResults(lastEscalationAnalysis);
         });
     }
 }

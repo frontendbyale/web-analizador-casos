@@ -5,6 +5,7 @@ import Papa from 'papaparse'; // PapaParse se usa aquí solo para la descarga
 let closureChartInstance = null;
 let weeklyChartInstance = null;
 let agentChartInstances = {};
+let escalationChartInstance = null;
 
 /**
  * Renderiza el gráfico de torta de tiempos de cierre.
@@ -468,4 +469,90 @@ export function displayTopStats(analysis) {
             </div>
         </div>
     `;
+}
+
+/**
+ * Renderiza el gráfico de torta para la distribución de bandejas de escalado.
+ */
+function renderEscalationChart(bandejaCounts) {
+    const ctx = document.getElementById('escalationChart');
+    if (!ctx) return;
+
+    if (escalationChartInstance) {
+        escalationChartInstance.destroy();
+    }
+
+    const labels = Object.keys(bandejaCounts);
+    const data = Object.values(bandejaCounts);
+    const isDarkMode = document.documentElement.classList.contains('dark');
+    const chartFontColor = isDarkMode ? '#cbd5e1' : '#475569';
+
+    escalationChartInstance = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: '# de Casos',
+                data: data,
+                backgroundColor: ['rgba(79, 70, 229, 0.7)', 'rgba(5, 150, 105, 0.7)', 'rgba(217, 119, 6, 0.7)', 'rgba(220, 38, 38, 0.7)', 'rgba(107, 33, 168, 0.7)'],
+                borderColor: isDarkMode ? '#1e293b' : '#ffffff',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { color: chartFontColor } },
+                title: { display: true, text: 'Distribución de Escalados por Bandeja', color: chartFontColor, font: { size: 16 } }
+            }
+        }
+    });
+}
+
+
+/**
+ * Muestra los resultados del análisis de casos escalados.
+ */
+export function displayEscalationResults(analysis) {
+    const { escalatedCasesList, bandejaCounts } = analysis;
+    const resultsDiv = document.getElementById('resultsEscalados');
+    if (!resultsDiv) return;
+
+    if (escalatedCasesList.length === 0) {
+        resultsDiv.innerHTML = `<p class="text-center text-slate-600 dark:text-slate-400">No se encontraron casos escalados en este período.</p>`;
+        return;
+    }
+
+    resultsDiv.innerHTML = `
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+            <div class="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700 relative h-96">
+                <canvas id="escalationChart"></canvas>
+            </div>
+            <div class="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700">
+                <h2 class="text-2xl font-bold text-slate-700 dark:text-slate-200 mb-4">Detalle de Escalados (${escalatedCasesList.length})</h2>
+                <div class="max-h-96 overflow-y-auto">
+                    <table class="w-full text-sm text-left">
+                        <thead class="bg-slate-200 dark:bg-slate-700 sticky top-0"><tr class="text-slate-600 dark:text-slate-300">
+                            <th class="p-3 font-semibold">Caso Padre</th>
+                            <th class="p-3 font-semibold">Caso Hijo</th>
+                            <th class="p-3 font-semibold">Bandeja Destino</th>
+                        </tr></thead>
+                        <tbody>
+                        ${escalatedCasesList.map(c => `
+                            <tr class="border-b border-slate-200 dark:border-slate-700">
+                                <td class="p-3 align-top text-slate-600 dark:text-slate-300">#${c.parentCase}</td>
+                                <td class="p-3 align-top text-slate-600 dark:text-slate-300">#${c.childCase}</td>
+                                <td class="p-3 align-top font-medium text-slate-800 dark:text-slate-300">${c.destinationBandeja}</td>
+                            </tr>
+                        `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Renderizamos el gráfico una vez que el canvas existe
+    renderEscalationChart(bandejaCounts);
 }

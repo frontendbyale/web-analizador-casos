@@ -9,7 +9,8 @@ export function initializeTabs() {
     const tabs = [
         { button: document.getElementById('tab-analisis'), content: document.getElementById('content-analisis') },
         { button: document.getElementById('tab-reclamos'), content: document.getElementById('content-reclamos') },
-        { button: document.getElementById('tab-top-stats'), content: document.getElementById('content-top-stats') }
+        { button: document.getElementById('tab-top-stats'), content: document.getElementById('content-top-stats') },
+        { button: document.getElementById('tab-escalados'), content: document.getElementById('content-escalados') }
     ];
     const activeClasses = 'text-indigo-600 dark:text-indigo-400 border-indigo-500';
     const inactiveClasses = 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 border-transparent hover:border-slate-300 dark:hover:border-slate-600';

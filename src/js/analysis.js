@@ -90,7 +90,7 @@ export function processGeneralAnalysis(data, month, year) {
  * @param {Array} data - Los datos crudos del CSV.
  * @returns {Object} - El análisis de reclamos semanales.
  */
-export function processWeeklyAnalysis(data) {
+export function processWeeklyAnalysis(data, year, month) {
     const today = new Date();
     const oneWeekAgo = new Date(today);
     oneWeekAgo.setDate(today.getDate() - 7);
@@ -185,4 +185,37 @@ export function processTopStats(data) {
         }));
         
     return { topClients, topDiagnosticos };
+}
+
+/**
+ * Procesa los datos para analizar los casos escalados.
+ * @param {Array} data - Los datos filtrados del período.
+ * @returns {Object} - Un objeto con la lista de escalados y el conteo por bandeja.
+ */
+export function processEscalationAnalysis(data) {
+    // 1. --- FILTRO CLAVE Y DEFINITIVO ---
+    // Esta nueva lógica revisa dentro del string HTML y solo incluye las filas
+    // si encuentra un número de caso en el enlace.
+    const parentCases = data.filter(c => {
+        const childCaseHtml = c['Nro. Case Hijo'];
+        // Usamos una expresión regular para verificar si hay un número dentro del tag <a>
+        // Por ejemplo: <a...>12345</a>. Si lo encuentra, se incluye.
+        return typeof childCaseHtml === 'string' && />(\d+)</.test(childCaseHtml);
+    });
+
+    // 2. Mapear la información necesaria (usa la data ya filtrada)
+    const escalatedCasesList = parentCases.map(c => ({
+        parentCase: c.caseHtml || `Case #${c['Nro de Case']}`,
+        childCase: c['Nro. Case Hijo'], // Ya sabemos que contiene un link válido
+        destinationBandeja: c['Bandeja hijo'] || 'No especificada'
+    }));
+
+    // 3. Contar las derivaciones a cada bandeja (usa la data ya filtrada)
+    const bandejaCounts = parentCases.reduce((acc, c) => {
+        const bandeja = c['Bandeja hijo'] || 'No especificada';
+        acc[bandeja] = (acc[bandeja] || 0) + 1;
+        return acc;
+    }, {});
+
+    return { escalatedCasesList, bandejaCounts };
 }
