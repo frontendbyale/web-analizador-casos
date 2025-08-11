@@ -400,3 +400,72 @@ export function displayWeeklyResults(analysis) {
     // Llamamos a la nueva función para renderizar el gráfico de barras
     renderWeeklyChart(claimsByReason);
 }
+
+/**
+ * Muestra los rankings de Top Clientes y Diagnósticos.
+ * @param {Object} analysis - El análisis de los rankings.
+ */
+export function displayTopStats(analysis) {
+    const { topClients, topDiagnosticos } = analysis;
+    const resultsDiv = document.getElementById('resultsTopStats');
+    if (!resultsDiv) return;
+
+    resultsDiv.innerHTML = `
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+           <div class="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700">
+                <h2 class="text-2xl font-bold text-slate-700 dark:text-slate-200 mb-4">Top 10 Clientes con más Reclamos</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left">
+                        <thead class="bg-slate-200 dark:bg-slate-700"><tr class="text-slate-600 dark:text-slate-300">
+                            <th class="p-3 font-semibold">#</th>
+                            <th class="p-3 font-semibold">Cliente</th>
+                            <th class="p-3 font-semibold">Casos (${'Reclamos'})</th>
+                        </tr></thead>
+                        <tbody>
+                        ${topClients.map(c => `
+                            <tr class="border-b border-slate-200 dark:border-slate-700">
+                                <td class="p-3 align-top font-bold text-slate-500 dark:text-slate-400">${c.rank}</td>
+                                <td class="p-3 align-top">
+                                    <p class="font-medium text-slate-800 dark:text-slate-300">${c.client}</p>
+                                    <p class="text-xs text-slate-500 dark:text-slate-400">${c.segment}</p>
+                                </td>
+                                <td class="p-3 align-top">
+                                    <div class="flex flex-wrap gap-2 items-center text-slate-800 dark:text-slate-300">
+                                        <span class="font-mono text-base font-bold text-indigo-600 dark:text-indigo-400 mr-2">(${c.count})</span>
+                                        ${c.cases.join(' ')}
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700">
+                <h2 class="text-2xl font-bold text-slate-700 dark:text-slate-200 mb-4">Top 5 Diagnósticos y sus Soluciones</h2>
+                <div class="space-y-4">
+                ${topDiagnosticos.map(d => `
+                    <div class="bg-white dark:bg-slate-800 p-4 rounded-lg shadow border border-slate-200 dark:border-slate-700">
+                        <div class="flex justify-between items-center">
+                            <span class="font-bold text-slate-500 dark:text-slate-400">#${d.rank}</span>
+                            <h3 class="flex-grow text-lg font-semibold text-indigo-700 dark:text-indigo-400 px-4">${d.diagnosis}</h3>
+                            <span class="font-mono text-xl font-bold text-slate-800 dark:text-slate-300">${d.count}</span>
+                        </div>
+                        <div class="mt-3 pt-3 border-t border-slate-200 dark:border-slate-600">
+                            <h4 class="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-2">Soluciones Aplicadas:</h4>
+                            <ul class="space-y-1 text-sm">
+                            ${d.solutions.map(([solution, count]) => `
+                                <li class="flex justify-between items-center text-slate-700 dark:text-slate-300">
+                                    <span>- ${solution}</span>
+                                    <span class="font-mono bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-full text-xs">${count}</span>
+                                </li>
+                            `).join('')}
+                            </ul>
+                        </div>
+                    </div>
+                `).join('')}
+                </div>
+            </div>
+        </div>
+    `;
+}

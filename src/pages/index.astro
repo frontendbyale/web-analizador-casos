@@ -4,6 +4,7 @@ import Layout from '../layouts/Layout.astro';
 import Nav from '../components/Nav.astro';
 import AnalizadorCasos from '../components/AnalizadorCasos.astro';
 import ReclamosSemana from '../components/ReclamosSemana.astro';
+import TopStats from '../components/TopStats.astro';
 ---
 
 <Layout title="Panel de Análisis de Casos">
@@ -14,6 +15,9 @@ import ReclamosSemana from '../components/ReclamosSemana.astro';
         </div>
         <div id="content-reclamos" class="tab-content hidden">
             <ReclamosSemana />
+        </div>
+        <div id="content-top-stats" class="tab-content hidden">
+            <TopStats /> 
         </div>
     </main>
     

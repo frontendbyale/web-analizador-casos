@@ -1,11 +1,12 @@
 // src/js/main.js
 import Papa from 'papaparse';
 import {initializeTabs } from './ui.js';
-import { processGeneralAnalysis, processWeeklyAnalysis } from './analysis.js';
-import { displayGeneralResults, displayWeeklyResults, renderAllCharts } from './dom-updates.js';
+import { processGeneralAnalysis, processWeeklyAnalysis, processTopStats } from './analysis.js';
+import { displayGeneralResults, displayWeeklyResults, renderAllCharts, displayTopStats } from './dom-updates.js';
 
 // --- Estado Global de la Aplicación ---
 let processedDataStore = null;
+let filteredDataStore = null;
 let lastGeneralAnalysis = null;
 let lastWeeklyAnalysis = null; 
 let lastMonthName = '';
@@ -88,6 +89,7 @@ function setupEventListeners() {
                 
                 // Guardamos el análisis y los parámetros para poder re-renderizar
                 lastGeneralAnalysis = processGeneralAnalysis(processedDataStore, selectedMonth, selectedYear);
+                filteredDataStore = lastGeneralAnalysis.filteredCases; 
                 lastMonthName = monthSelect.options[selectedMonth].text;
                 lastYear = selectedYear;
                 
@@ -98,7 +100,9 @@ function setupEventListeners() {
                 processBtn.disabled = false;
                 processBtn.textContent = "Analizar Período";
                 const weeklyBtn = document.getElementById('processBtnWeek');
+                const topStatsBtn = document.getElementById('processBtnTopStats');
                 if (weeklyBtn) weeklyBtn.disabled = false;
+                if (topStatsBtn) topStatsBtn.disabled = false;
             }
         });
     });
@@ -114,4 +118,18 @@ function setupEventListeners() {
         lastWeeklyAnalysis = processWeeklyAnalysis(processedDataStore);
         displayWeeklyResults(lastWeeklyAnalysis);
     });
+
+    // --- NUEVO LISTENER PARA ESTADÍSTICAS TOP ---
+    const processBtnTopStats = document.getElementById('processBtnTopStats');
+    if(processBtnTopStats) {
+        processBtnTopStats.disabled = true; // Empieza deshabilitado
+        processBtnTopStats.addEventListener('click', () => {
+            if (!filteredDataStore) { 
+                alert("Primero debes procesar un archivo en la pestaña 'Análisis General'.");
+                return;
+            }
+            const analysis = processTopStats(filteredDataStore); 
+            displayTopStats(analysis);
+        });
+    }
 }

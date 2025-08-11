@@ -19,6 +19,7 @@ const createStatObject = () => Object.fromEntries(timeBuckets.map(bucket => [buc
  */
 export function processGeneralAnalysis(data, month, year) {
     let processedData = data.map(row => ({ ...row,
+        'caseHtml': row['Nro. Case'],
         'Nro de Case': row['Nro. Case'] ? parseInt(row['Nro. Case'].match(/>(\d+)</)?.[1], 10) : null,
         'Fecha de Creacion': row['Fecha Creación (FFHH)'] ? new Date(row['Fecha Creación (FFHH)']) : null,
         'Fecha de Cierre': row['Fecha Cierre'] ? new Date(row['Fecha Cierre']) : null,
@@ -107,6 +108,10 @@ export function processWeeklyAnalysis(data) {
     
     // Usamos el 'Nro de Case' limpio para eliminar duplicados
     const uniqueCases = Array.from(new Map(processedData.map(item => [item['Nro de Case'], item])).values());
+    const filteredCases = uniqueCases.filter(row => {
+        const d = row['Fecha de Creacion'];
+        return d && d.getFullYear() === year && d.getMonth() === month;
+    });
     
     const claimsByReason = uniqueCases.reduce((acc, caseItem) => {
         const reason = caseItem['Razón'] || 'No Especificado';
@@ -117,5 +122,67 @@ export function processWeeklyAnalysis(data) {
         return acc;
     }, {});
 
-    return { claimsByReason, totalClaims: uniqueCases.length, startDate: oneWeekAgo };
+    return { filteredCases, claimsByReason, totalClaims: uniqueCases.length, startDate: oneWeekAgo };
+}
+
+/**
+ * Procesa los datos para generar rankings de Top Clientes y Top Diagnósticos.
+ * @param {Array} data - Los datos crudos del CSV.
+ * @returns {Object} - Un objeto con los rankings.
+ */
+export function processTopStats(data) {
+    const closedCases = data.filter(c => c['Estado Case'] === 'Closed');
+
+    // Conteo por cliente
+    const clientCounts = closedCases.reduce((acc, c) => {
+        const client = c['Cliente'] || 'No Especificado';
+        if (!acc[client]) {
+            acc[client] = { cases: [], segment: c['Segmento Comercial'] };
+        }
+        // Guardamos el HTML del caso o un texto de respaldo
+        acc[client].cases.push(c.caseHtml || `Case #${c['Nro de Case']}`);
+        return acc;
+    }, {});
+
+    // Conteo por diagnóstico
+    const diagnosisData = closedCases.reduce((acc, c) => {
+        const diagnosis = c['Diagnóstico'] || 'No Especificado';
+        const solution = c['Solución'] || 'Sin solución detallada';
+
+        if (!acc[diagnosis]) {
+            // Inicializamos con un contador y un objeto para las soluciones
+            acc[diagnosis] = { count: 0, solutions: {} };
+        }
+
+        acc[diagnosis].count++;
+        // Contamos las ocurrencias de cada solución para este diagnóstico
+        acc[diagnosis].solutions[solution] = (acc[diagnosis].solutions[solution] || 0) + 1;
+        
+        return acc;
+    }, {});
+
+    // Ordenar y tomar el Top 10 de Clientes
+     const topClients = Object.entries(clientCounts)
+        .sort(([, a], [, b]) => b.cases.length - a.cases.length) // Ordenar por cantidad de casos
+        .slice(0, 10)
+        .map(([client, data], index) => ({
+            rank: index + 1,
+            client,
+            count: data.cases.length, // El conteo es el largo del array
+            cases: data.cases,       // El array de HTMLs de casos
+            segment: data.segment
+        }));
+    // Ordenar y tomar el Top 5 de Diagnósticos
+    const topDiagnosticos = Object.entries(diagnosisData)
+        .sort(([, a], [, b]) => b.count - a.count)
+        .slice(0, 5)
+        .map(([diagnosis, data], index) => ({
+            rank: index + 1,
+            diagnosis,
+            count: data.count,
+            // Ordenamos las soluciones por frecuencia para este diagnóstico
+            solutions: Object.entries(data.solutions).sort(([, a], [, b]) => b - a)
+        }));
+        
+    return { topClients, topDiagnosticos };
 }
