@@ -253,11 +253,18 @@ export function displayGeneralResults(analysis, lastMonthName, lastYear) {
     
     // Preparar CSV para descarga
     const finalCsvData = filteredCases.map(c => ({
-        'Modelo Comercial': c['Modelo Comercial'],'Segmento Comercial': c['Segmento Comercial'],'Cliente': c['Cliente'],
-        'Nro de Case': c['Nro de Case'],'Estado de Case': c['Estado Case'],'Razon': c['Razón'],'Subrazon': c['Subrazón'],
+        'Modelo Comercial': c['Modelo Comercial'],
+        'Segmento Comercial': c['Segmento Comercial'],
+        'Cliente': c['Cliente'],
+        'Nro de Case': c['Nro de Case'],
+        'Estado de Case': c['Estado Case'],
+        'Agente Asignado': c['Usuario Asignado'] || 'No asignado',
+        'Razon': c['Razón'],
+        'Subrazon': c['Subrazón'],
         'Fecha de Creacion': c['Fecha de Creacion'] ? c['Fecha de Creacion'].toISOString().slice(0, 19).replace('T', ' ') : '',
         'Fecha de Cierre': c['Fecha de Cierre'] ? c['Fecha de Cierre'].toISOString().slice(0, 19).replace('T', ' ') : '',
-        'Diagnostico': c['Diagnóstico'],'Solucion': c['Solución']
+        'Diagnostico': c['Diagnóstico'],
+        'Solucion': c['Solución']
     }));
 
     let downloadHTML = '';
