@@ -341,7 +341,7 @@ export function displayGeneralResults(analysis, lastMonthName, lastYear) {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `casos_${title}_procesados.csv`;
+            a.download = `casos_${lastMonthName}_procesados.csv`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
