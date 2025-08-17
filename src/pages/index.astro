@@ -6,6 +6,7 @@ import AnalizadorCasos from '../components/AnalizadorCasos.astro';
 import ReclamosSemana from '../components/ReclamosSemana.astro';
 import TopStats from '../components/TopStats.astro';
 import Escalados from '../components/Escalados.astro';
+import Anual from '../components/Anual.astro';
 ---
 
 <Layout title="Panel de Análisis de Casos">
@@ -22,6 +23,9 @@ import Escalados from '../components/Escalados.astro';
         </div>
         <div id="content-escalados" class="tab-content hidden"> 
             <Escalados /> 
+        </div>
+        <div id="content-anual" class="tab-content hidden"> 
+            <Anual /> 
         </div>
     </main>
     

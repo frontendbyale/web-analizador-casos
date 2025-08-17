@@ -1,8 +1,8 @@
 // src/js/main.js
 import Papa from 'papaparse';
 import {initializeTabs } from './ui.js';
-import { processGeneralAnalysis, processWeeklyAnalysis, processTopStats, processEscalationAnalysis} from './analysis.js';
-import { displayGeneralResults, displayWeeklyResults, renderAllCharts, displayTopStats, displayEscalationResults } from './dom-updates.js';
+import { processGeneralAnalysis, processWeeklyAnalysis, processTopStats, processEscalationAnalysis, processYearlyAnalysis} from './analysis.js';
+import { displayGeneralResults, displayWeeklyResults, renderAllCharts, displayTopStats, displayEscalationResults, displayYearlyResults} from './dom-updates.js';
 
 // --- Estado Global de la Aplicación ---
 let processedDataStore = null;
@@ -10,6 +10,7 @@ let filteredDataStore = null;
 let lastGeneralAnalysis = null;
 let lastWeeklyAnalysis = null;
 let lastEscalationAnalysis = null;
+let lastYearlyAnalysis = null;
 let lastMonthName = '';
 let lastYear = 0;
 
@@ -34,6 +35,9 @@ function applyTheme(isDark) {
     }
     if (lastEscalationAnalysis) { // <-- Añade este bloque
         displayEscalationResults(lastEscalationAnalysis);
+    }
+    if (lastYearlyAnalysis) { // <-- Añade este bloque
+        displayYearlyResults(lastYearlyAnalysis);
     }
 }
 
@@ -106,10 +110,11 @@ function setupEventListeners() {
                 const weeklyBtn = document.getElementById('processBtnWeek');
                 const topStatsBtn = document.getElementById('processBtnTopStats');
                 const escaladosBtn = document.getElementById('processBtnEscalados');
+                const anualBtn = document.getElementById('processBtnAnual')
                 if (weeklyBtn) weeklyBtn.disabled = false;
                 if (topStatsBtn) topStatsBtn.disabled = false;
                 if (escaladosBtn) escaladosBtn.disabled = false;
-            }
+                if (anualBtn) anualBtn.disabled = false;            }
         });
     });
 
@@ -151,6 +156,19 @@ function setupEventListeners() {
             }
             lastEscalationAnalysis = processEscalationAnalysis(filteredDataStore);
             displayEscalationResults(lastEscalationAnalysis);
+        });
+    }
+
+    const processBtnAnual = document.getElementById('processBtnAnual');
+    if(processBtnAnual) {
+        processBtnAnual.disabled = true;
+        processBtnAnual.addEventListener('click', () => {
+            if (!processedDataStore) {
+                alert("Primero debes procesar un archivo en la pestaña 'Análisis General'.");
+                return;
+            }
+            lastYearlyAnalysis = processYearlyAnalysis(processedDataStore);
+            displayYearlyResults(lastYearlyAnalysis);
         });
     }
 }

@@ -44,6 +44,20 @@ export function processGeneralAnalysis(data, month, year) {
         }
     });
 
+    // --- NUEVOS CÁLCULOS AQUÍ ---
+    const webUser = "service-account-abe26a47";
+
+    // 1. Filtramos los casos creados por la cuenta de servicio (web)
+    const webCreatedCases = filteredCases.filter(c => c['Empleado Creación'] === webUser);
+
+    // 2. De esos casos web, contamos cuántos cerró cada agente
+    const webCasesClosedByAgent = Object.fromEntries(agents.map(agent => [agent, 0]));
+    webCreatedCases.forEach(c => {
+        if (c['Estado Case'] === 'Closed' && agents.includes(c['Empleado Cierre'])) {
+            webCasesClosedByAgent[c['Empleado Cierre']]++;
+        }
+    });
+
     // --- ANÁLISIS ANTERIORES (SIN CAMBIOS) ---
     const overallAgentActivity = Object.fromEntries(agents.map(agent => [agent, { created: 0, closed: 0 }]));
     filteredCases.forEach(c => {
@@ -76,7 +90,9 @@ export function processGeneralAnalysis(data, month, year) {
     // Retornamos todo, incluyendo los nuevos datos
     return { 
         filteredCases, 
-        closedCases, 
+        closedCases,
+        webCreatedCasesCount: webCreatedCases.length, // <-- Nuevo
+        webCasesClosedByAgent,                       // <-- Nuevo 
         openCases, // <-- Nuevo
         openCasesAssignedTo, // <-- Nuevo
         overallAgentActivity, 
@@ -218,4 +234,62 @@ export function processEscalationAnalysis(data) {
     }, {});
 
     return { escalatedCasesList, bandejaCounts };
+}
+
+
+/**
+ * --- FUNCIÓN ACTUALIZADA ---
+ * Procesa los datos para generar una distribución multi-línea de cierre por mes para el año actual.
+ * @param {Array} data - Los datos crudos del CSV.
+ * @returns {Object} - Un objeto con los conteos mensuales para cada categoría de tiempo.
+ */
+export function processYearlyAnalysis(data) {
+    const currentYear = new Date().getFullYear();
+    const timeBuckets = ['Menos de 24hs', 'Entre 24hs y 48hs', 'Entre 48hs y 72hs', 'Más de 72hs'];
+    
+    const getTimeBucket = (hours) => {
+        if (hours <= 24) return timeBuckets[0];
+        if (hours <= 48) return timeBuckets[1];
+        if (hours <= 72) return timeBuckets[2];
+        return timeBuckets[3];
+    };
+    
+    // 1. Mapeamos los datos para limpiar el N° de Case y convertir fechas.
+    let processedData = data.map(row => ({
+        ...row,
+        'Nro de Case': row['Nro. Case'] ? parseInt(row['Nro. Case'].match(/>(\d+)</)?.[1], 10) : null,
+        'Fecha de Creacion': row['Fecha Creación (FFHH)'] ? new Date(row['Fecha Creación (FFHH)']) : null,
+        'Fecha de Cierre': row['Fecha Cierre'] ? new Date(row['Fecha Cierre']) : null,
+    })).filter(row => row['Nro de Case']); // Quitamos filas sin N° de Case
+
+    // --- CORRECCIÓN CLAVE AQUÍ ---
+    // 2. Eliminamos los duplicados usando el N° de Case limpio.
+    const uniqueCases = Array.from(new Map(processedData.map(item => [item['Nro de Case'], item])).values());
+    
+    // 3. Ahora filtramos sobre los casos únicos.
+    const closedCasesThisYear = uniqueCases.filter(c => 
+        c['Estado Case'] === 'Closed' && 
+        c['Fecha de Creacion'] instanceof Date && 
+        c['Fecha de Cierre'] instanceof Date && 
+        c['Fecha de Cierre'].getFullYear() === currentYear
+    );
+
+    const monthlyData = {
+        'Menos de 24hs': Array(12).fill(0),
+        'Entre 24hs y 48hs': Array(12).fill(0),
+        'Entre 48hs y 72hs': Array(12).fill(0),
+        'Más de 72hs': Array(12).fill(0)
+    };
+
+    closedCasesThisYear.forEach(c => {
+        const diffHours = (c['Fecha de Cierre'].getTime() - c['Fecha de Creacion'].getTime()) / 3600000;
+        const category = getTimeBucket(diffHours);
+        const month = c['Fecha de Cierre'].getMonth();
+        
+        if (monthlyData[category]) {
+            monthlyData[category][month]++;
+        }
+    });
+
+    return { monthlyData, year: currentYear };
 }

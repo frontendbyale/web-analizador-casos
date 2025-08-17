@@ -6,6 +6,8 @@ let closureChartInstance = null;
 let weeklyChartInstance = null;
 let agentChartInstances = {};
 let escalationChartInstance = null;
+let yearlyChartInstance = null; 
+let monthlyChartInstances = [];
 
 /**
  * Renderiza el gráfico de torta de tiempos de cierre.
@@ -247,7 +249,7 @@ export function renderAllCharts(analysis) {
  */
 export function displayGeneralResults(analysis, lastMonthName, lastYear) {
     
-    const { filteredCases, closedCases, openCases, openCasesAssignedTo, overallAgentActivity, overallClosureStats, agentPerformance } = analysis;
+    const { filteredCases, closedCases, webCreatedCasesCount, webCasesClosedByAgent, openCases, openCasesAssignedTo, overallAgentActivity, overallClosureStats, agentPerformance } = analysis;
     const resultsDiv = document.getElementById('results');
     if (!resultsDiv) return;
     
@@ -288,6 +290,7 @@ export function displayGeneralResults(analysis, lastMonthName, lastYear) {
                 <div class="bg-white dark:bg-slate-700/50 p-4 rounded-lg shadow"><div class="text-3xl font-bold text-indigo-600 dark:text-indigo-400">${filteredCases.length}</div><div class="text-sm text-slate-500 dark:text-slate-400">Casos Totales</div></div>
                 <div class="bg-white dark:bg-slate-700/50 p-4 rounded-lg shadow"><div class="text-3xl font-bold text-green-600 dark:text-green-400">${closedCases.length}</div><div class="text-sm text-slate-500 dark:text-slate-400">Casos Cerrados</div></div>
                 <div class="bg-white dark:bg-slate-700/50 p-4 rounded-lg shadow"><div class="text-3xl font-bold text-amber-600 dark:text-amber-400">${openCases.length}</div><div class="text-sm text-slate-500 dark:text-slate-400">Casos Abiertos</div></div>
+                <div class="bg-white dark:bg-slate-700/50 p-4 rounded-lg shadow"><div class="text-3xl font-bold text-sky-600 dark:text-sky-400">${webCreatedCasesCount}</div><div class="text-sm text-slate-500 dark:text-slate-400">Creados por Web</div></div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div>
@@ -299,6 +302,8 @@ export function displayGeneralResults(analysis, lastMonthName, lastYear) {
                     <table class="w-full text-sm text-left"><thead class="bg-slate-200 dark:bg-slate-700"><tr class="text-slate-600 dark:text-slate-300"><th class="p-2 font-semibold">Agente</th><th class="p-2 font-semibold">Creados</th><th class="p-2 font-semibold">Cerrados</th></tr></thead><tbody>${Object.entries(overallAgentActivity).map(([agent, data]) => `<tr class="border-b border-slate-200 dark:border-slate-700"><td class="p-2 font-medium text-slate-800 dark:text-slate-300">${agent}</td><td class="p-2 font-mono text-slate-800 dark:text-slate-300">${data.created}</td><td class="p-2 font-mono text-slate-800 dark:text-slate-300">${data.closed}</td></tr>`).join('')}</tbody></table>
                     <h3 class="font-semibold text-slate-600 dark:text-slate-300 mb-2 mt-6">Casos Abiertos Asignados</h3>
                     <table class="w-full text-sm text-left"><thead class="bg-slate-200 dark:bg-slate-700"><tr class="text-slate-600 dark:text-slate-300"><th class="p-2 font-semibold">Agente</th><th class="p-2 font-semibold">Cantidad Asignada</th></tr></thead><tbody>${Object.entries(openCasesAssignedTo).map(([agent, count]) => `<tr class="border-b border-slate-200 dark:border-slate-700"><td class="p-2 font-medium text-slate-800 dark:text-slate-300">${agent}</td><td class="p-2 font-mono text-slate-800 dark:text-slate-300">${count}</td></tr>`).join('')}</tbody></table>
+                    <h3 class="font-semibold text-slate-600 dark:text-slate-300 mb-2 mt-6">Cierres de Casos Web por Agente</h3>
+                    <table class="w-full text-sm text-left"><thead class="bg-slate-200 dark:bg-slate-700"><tr class="text-slate-600 dark:text-slate-300"><th class="p-2 font-semibold">Agente</th><th class="p-2 font-semibold">Cantidad Cerrada</th></tr></thead><tbody>${Object.entries(webCasesClosedByAgent).map(([agent, count]) => `<tr class="border-b border-slate-200 dark:border-slate-700"><td class="p-2 font-medium text-slate-800 dark:text-slate-300">${agent}</td><td class="p-2 font-mono text-slate-800 dark:text-slate-300">${count}</td></tr>`).join('')}</tbody></table>
                 </div>
             </div>
         </div>
@@ -562,4 +567,203 @@ export function displayEscalationResults(analysis) {
 
     // Renderizamos el gráfico una vez que el canvas existe
     renderEscalationChart(bandejaCounts);
+}
+
+function renderYearlyLineChart(analysis) {
+    const ctx = document.getElementById('yearlyLineChart');
+    if (!ctx) return;
+
+    if (yearlyChartInstance) {
+        yearlyChartInstance.destroy();
+    }
+    
+    const { monthlyData, year } = analysis;
+    const labels = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+    const isDarkMode = document.documentElement.classList.contains('dark');
+    const chartFontColor = isDarkMode ? '#cbd5e1' : '#475569';
+    const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+
+    console.log(monthlyData)
+
+    // Definimos los colores para cada categoría, manteniendo la consistencia
+    const categoryColors = {
+        'Menos de 24hs': 'rgba(79, 70, 229, 1)',      // Indigo
+        'Entre 24hs y 48hs': 'rgba(5, 150, 105, 1)',  // Emerald
+        'Entre 48hs y 72hs': 'rgba(217, 119, 6, 1)',  // Amber
+        'Más de 72hs': 'rgba(220, 38, 38, 1)'         // Red
+    };
+
+    // Creamos un "dataset" (una línea) para cada categoría
+    const datasets = Object.keys(monthlyData).map(category => ({
+        label: category,
+        data: monthlyData[category],
+        borderColor: categoryColors[category],
+        backgroundColor: categoryColors[category].replace('1)', '0.2)'), // Color semitransparente para el área bajo la línea
+        fill: false,
+        tension: 0.3,
+        pointRadius: 4,
+        pointBackgroundColor: categoryColors[category],
+    }));
+
+    yearlyChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: datasets // <-- Usamos el array de datasets que creamos
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { // Para que el tooltip muestre todas las líneas al pasar el mouse
+                mode: 'index',
+                intersect: false,
+            },
+            plugins: {
+                legend: { 
+                    position: 'bottom', // Leyenda abajo para más claridad
+                    labels: { color: chartFontColor } 
+                },
+                title: { display: true, text: `Evolución de Tiempos de Cierre - ${year}`, color: chartFontColor, font: { size: 18 } }
+            },
+            scales: {
+                x: { ticks: { color: chartFontColor }, grid: { color: gridColor } },
+                y: { 
+                    ticks: { color: chartFontColor }, 
+                    grid: { color: gridColor },
+                    beginAtZero: true // Asegura que el eje Y empiece en 0
+                }
+            }
+        }
+    });
+}
+
+/**
+ * --- NUEVA FUNCIÓN ---
+ * Renderiza un gráfico de barras individual para un mes específico.
+ * @param {number} monthIndex - El índice del mes (0-11).
+ * @param {Object} dataForMonth - Los datos de las 4 categorías para ese mes.
+ * @param {number} totalCases - El total de casos en ese mes.
+ */
+function renderMonthlyBarChart(monthIndex, dataForMonth) {
+    const canvasId = `monthly-bar-chart-${monthIndex}`;
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return;
+
+    if (monthlyChartInstances[monthIndex]) {
+        monthlyChartInstances[monthIndex].destroy();
+    }
+
+    const labels = Object.keys(dataForMonth);
+    const data = Object.values(dataForMonth);
+    const isDarkMode = document.documentElement.classList.contains('dark');
+    const chartFontColor = isDarkMode ? '#cbd5e1' : '#475569';
+    const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+    const backgroundColors = ['rgba(79, 70, 229, 0.7)', 'rgba(5, 150, 105, 0.7)', 'rgba(217, 119, 6, 0.7)', 'rgba(220, 38, 38, 0.7)'];
+
+    monthlyChartInstances[monthIndex] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Cantidad de Casos',
+                data: data,
+                backgroundColor: backgroundColors
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: { label: (context) => `Casos: ${context.raw || 0}` }
+                }
+            },
+            scales: {
+                x: { ticks: { color: chartFontColor }, grid: { color: 'transparent' } },
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        color: chartFontColor,
+                        callback: function(value) { if (value % 1 === 0) return value; }
+                    },
+                    grid: { color: gridColor }
+                }
+            }
+        }
+    });
+}
+
+export function renderYearlyCharts(analysis) {
+    if (!analysis) return;
+
+    // 1. Renderizar el gráfico de líneas principal
+    renderYearlyLineChart(analysis);
+
+    // 2. Renderizar la cuadrícula de gráficos de barras mensuales
+    const { monthlyData } = analysis;
+    const activeMonths = [];
+    for (let i = 0; i < 12; i++) {
+        const totalForMonth = Object.values(monthlyData).reduce((sum, categoryData) => sum + categoryData[i], 0);
+        if (totalForMonth > 0) {
+            activeMonths.push(i);
+        }
+    }
+    
+    activeMonths.forEach(monthIndex => {
+        const dataForMonth = {
+            ' < 24hs': monthlyData['Menos de 24hs'][monthIndex], '24-48hs': monthlyData['Entre 24hs y 48hs'][monthIndex],
+            '48-72hs': monthlyData['Entre 48hs y 72hs'][monthIndex], '> 72hs': monthlyData['Más de 72hs'][monthIndex]
+        };
+        renderMonthlyBarChart(monthIndex, dataForMonth);
+    });
+}
+
+
+/**
+ * Muestra los resultados del análisis anual.
+ */
+export function displayYearlyResults(analysis) {
+    const resultsDiv = document.getElementById('resultsAnual');
+    if (!resultsDiv) return;
+
+    const { monthlyData } = analysis;
+    const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Dic"];
+    let monthlyChartsHTML = '';
+    let hasMonthlyData = false;
+
+    for (let i = 0; i < 12; i++) {
+        const totalForMonth = Object.values(monthlyData).reduce((sum, categoryData) => sum + categoryData[i], 0);
+        if (totalForMonth > 0) {
+            hasMonthlyData = true;
+            monthlyChartsHTML += `
+                <div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700">
+                    <h3 class="text-lg font-bold text-center text-slate-700 dark:text-slate-200 mb-2">
+                        ${monthNames[i]} (Total: ${totalForMonth})
+                    </h3>
+                    <div class="relative h-64"><canvas id="monthly-bar-chart-${i}"></canvas></div>
+                </div>
+            `;
+        }
+    }
+    
+    if (!hasMonthlyData) {
+        resultsDiv.innerHTML = `<p class="text-center text-slate-500 dark:text-slate-400">No se encontraron casos cerrados en el año actual para mostrar.</p>`;
+        return;
+    }
+
+    resultsDiv.innerHTML = `
+        <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700">
+            <div class="relative h-[500px]">
+                <canvas id="yearlyLineChart"></canvas>
+            </div>
+        </div>
+
+        <h2 class="text-2xl font-bold text-slate-700 dark:text-slate-200 mt-12 mb-4">Desglose Mensual</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            ${monthlyChartsHTML}
+        </div>
+    `;
+    renderYearlyCharts(analysis)
 }
