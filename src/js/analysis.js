@@ -147,48 +147,61 @@ export function processWeeklyAnalysis(data, year, month) {
  * @returns {Object} - Un objeto con los rankings.
  */
 export function processTopStats(data) {
-    const closedCases = data.filter(c => c['Estado Case'] === 'Closed');
+    const closedCasesWithChildren = data.filter(c => 
+        c['Estado Case'] === 'Closed' &&
+        c['Nro. Case Hijo'] && 
+        c['Nro. Case Hijo'].trim() !== ''
+    );
 
-    // Conteo por cliente
-    const clientCounts = closedCases.reduce((acc, c) => {
-        const client = c['Cliente'] || 'No Especificado';
-        if (!acc[client]) {
-            acc[client] = { cases: [], segment: c['Segmento Comercial'] };
+    // 1. Agrupamos los casos por su segmento comercial
+    const casesBySegment = closedCasesWithChildren.reduce((acc, c) => {
+        const segment = c['Segmento Comercial'] || 'No especificado';
+        if (!acc[segment]) {
+            acc[segment] = [];
         }
-        // Guardamos el HTML del caso o un texto de respaldo
-        acc[client].cases.push(c.caseHtml || `Case #${c['Nro de Case']}`);
+        acc[segment].push(c);
         return acc;
     }, {});
 
-    // Conteo por diagnóstico
-    const diagnosisData = closedCases.reduce((acc, c) => {
+    // 2. Para cada segmento, calculamos su propio Top 10 de clientes
+    const topClientsBySegment = {};
+    for (const segment in casesBySegment) {
+        const clientCounts = casesBySegment[segment].reduce((acc, c) => {
+            const client = c['Cliente'] || 'No especificado';
+            if (!acc[client]) {
+                acc[client] = { cases: [], segment: c['Segmento Comercial'] };
+            }
+            acc[client].cases.push(c.caseHtml || `Case #${c['Nro de Case']}`);
+            return acc;
+        }, {});
+
+        topClientsBySegment[segment] = Object.entries(clientCounts)
+            .sort(([, a], [, b]) => b.cases.length - a.cases.length)
+            .slice(0, 10)
+            .map(([client, data], index) => ({
+                rank: index + 1,
+                client,
+                count: data.cases.length,
+                cases: data.cases,
+                segment: data.segment
+            }));
+    }
+    
+    // 3. --- LÓGICA COMPLETA Y CORREGIDA PARA TOP DIAGNÓSTICOS ---
+    const diagnosisData = closedCasesWithChildren.reduce((acc, c) => {
         const diagnosis = c['Diagnóstico'] || 'No Especificado';
         const solution = c['Solución'] || 'Sin solución detallada';
 
         if (!acc[diagnosis]) {
-            // Inicializamos con un contador y un objeto para las soluciones
             acc[diagnosis] = { count: 0, solutions: {} };
         }
 
         acc[diagnosis].count++;
-        // Contamos las ocurrencias de cada solución para este diagnóstico
         acc[diagnosis].solutions[solution] = (acc[diagnosis].solutions[solution] || 0) + 1;
         
         return acc;
     }, {});
 
-    // Ordenar y tomar el Top 10 de Clientes
-     const topClients = Object.entries(clientCounts)
-        .sort(([, a], [, b]) => b.cases.length - a.cases.length) // Ordenar por cantidad de casos
-        .slice(0, 10)
-        .map(([client, data], index) => ({
-            rank: index + 1,
-            client,
-            count: data.cases.length, // El conteo es el largo del array
-            cases: data.cases,       // El array de HTMLs de casos
-            segment: data.segment
-        }));
-    // Ordenar y tomar el Top 5 de Diagnósticos
     const topDiagnosticos = Object.entries(diagnosisData)
         .sort(([, a], [, b]) => b.count - a.count)
         .slice(0, 5)
@@ -196,11 +209,12 @@ export function processTopStats(data) {
             rank: index + 1,
             diagnosis,
             count: data.count,
-            // Ordenamos las soluciones por frecuencia para este diagnóstico
             solutions: Object.entries(data.solutions).sort(([, a], [, b]) => b - a)
         }));
+
+    const allSegments = Object.keys(topClientsBySegment).sort();
         
-    return { topClients, topDiagnosticos };
+    return { allSegments, topClientsBySegment, topDiagnosticos };
 }
 
 /**
