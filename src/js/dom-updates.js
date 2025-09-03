@@ -249,7 +249,7 @@ export function renderAllCharts(analysis) {
  */
 export function displayGeneralResults(analysis, lastMonthName, lastYear) {
     
-    const { filteredCases, closedCases, webCreatedCasesCount, webCasesClosedByAgent, openCases, openCasesAssignedTo, overallAgentActivity, overallClosureStats, agentPerformance } = analysis;
+    const { filteredCases, closedCases, webCreatedCasesCount, webCasesClosedByAgent, openCases, openCasesAssignedTo, overallAgentActivity, overallClosureStats, agentPerformance, resolutionBySegment } = analysis;
     const resultsDiv = document.getElementById('results');
     if (!resultsDiv) return;
     
@@ -296,6 +296,36 @@ export function displayGeneralResults(analysis, lastMonthName, lastYear) {
                 <div>
                     <h3 class="font-semibold text-slate-600 dark:text-slate-300 mb-2">Tiempos de Resolución (General)</h3>
                     <table class="w-full text-sm"><tbody>${Object.entries(overallClosureStats).map(([bucket, count]) => `<tr class="border-b border-slate-200 dark:border-slate-700"><td class="py-1.5 pr-2 text-slate-600 dark:text-slate-400">${bucket}</td><td class="py-1.5 font-mono text-right text-slate-800 dark:text-slate-300">${closedCases.length > 0 ? ((count / closedCases.length) * 100).toFixed(1) : 0}%</td><td class="py-1.5 pl-2 font-mono text-slate-500 dark:text-slate-400 text-right">(${count})</td></tr>`).join('')}</tbody></table>
+                    <h3 class="font-semibold text-slate-600 dark:text-slate-300 mb-2 mt-4">Tiempos de Resolución por Segmento Comercial</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-slate-200 dark:bg-slate-700">
+                                <tr class="text-slate-600 dark:text-slate-300">
+                                    <th class="p-3 font-semibold">Segmento Comercial</th>
+                                    <th class="p-3 font-semibold text-center">&lt; 24hs</th>
+                                    <th class="p-3 font-semibold text-center">24-48hs</th>
+                                    <th class="p-3 font-semibold text-center">48-72hs</th>
+                                    <th class="p-3 font-semibold text-center">&gt; 72hs</th>
+                                    <th class="p-3 font-semibold text-center">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            ${Object.entries(resolutionBySegment).map(([segment, stats]) => {
+                                const total = Object.values(stats).reduce((sum, count) => sum + count, 0);
+                                return `
+                                    <tr class="border-b border-slate-200 dark:border-slate-700">
+                                        <td class="p-3 font-medium text-slate-800 dark:text-slate-300">${segment}</td>
+                                        <td class="p-3 font-mono text-center text-slate-800 dark:text-slate-300">${stats['Menos de 24hs']}</td>
+                                        <td class="p-3 font-mono text-center text-slate-800 dark:text-slate-300">${stats['Entre 24hs y 48hs']}</td>
+                                        <td class="p-3 font-mono text-center text-slate-800 dark:text-slate-300">${stats['Entre 48hs y 72hs']}</td>
+                                        <td class="p-3 font-mono text-center text-slate-800 dark:text-slate-300">${stats['Más de 72hs']}</td>
+                                        <td class="p-3 font-mono text-center font-bold text-slate-800 dark:text-slate-300">${total}</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
                 <div>
                     <h3 class="font-semibold text-slate-600 dark:text-slate-300 mb-2">Actividad General por Agente</h3>

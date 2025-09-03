@@ -35,7 +35,31 @@ export function processGeneralAnalysis(data, month, year) {
     const closedCases = filteredCases.filter(c => c['Estado Case'] === 'Closed');
     const openCases = filteredCases.filter(c => c['Estado Case'] !== 'Closed'); // 1. Casos no cerrados (abiertos)
 
-    // 2. Conteo de casos abiertos asignados a cada agente
+    // Agrupamos los casos cerrados por segmento comercial
+    const casesBySegment = closedCases.reduce((acc, c) => {
+        const segment = c['Segmento Comercial'] || 'No especificado';
+        if (!acc[segment]) {
+            acc[segment] = [];
+        }
+        acc[segment].push(c);
+        return acc;
+    }, {});
+
+    // Para cada segmento, calculamos las estadísticas de tiempo de cierre
+    const resolutionBySegment = {};
+    for (const segment in casesBySegment) {
+        const segmentCases = casesBySegment[segment];
+        const stats = createStatObject(); // { '<24hs': 0, ... }
+        
+        segmentCases.forEach(c => {
+            const diffHours = (c['Fecha de Cierre'].getTime() - c['Fecha de Creacion'].getTime()) / 3600000;
+            const bucket = getTimeBucket(diffHours);
+            stats[bucket]++;
+        });
+        resolutionBySegment[segment] = stats;
+    }
+
+    // Conteo de casos abiertos asignados a cada agente
     const openCasesAssignedTo = Object.fromEntries(agents.map(agent => [agent, 0]));
     openCases.forEach(c => {
         const assignedUser = c['Usuario Asignado'];
@@ -44,13 +68,13 @@ export function processGeneralAnalysis(data, month, year) {
         }
     });
 
-    // --- NUEVOS CÁLCULOS AQUÍ ---
+    // Tomamos el usuario de creacion de reclamos por la web
     const webUser = "service-account-abe26a47";
 
-    // 1. Filtramos los casos creados por la cuenta de servicio (web)
+    // Filtramos los casos creados por la cuenta de servicio (web)
     const webCreatedCases = filteredCases.filter(c => c['Empleado Creación'] === webUser);
 
-    // 2. De esos casos web, contamos cuántos cerró cada agente
+    // De esos casos web, contamos cuántos cerró cada agente
     const webCasesClosedByAgent = Object.fromEntries(agents.map(agent => [agent, 0]));
     webCreatedCases.forEach(c => {
         if (c['Estado Case'] === 'Closed' && agents.includes(c['Empleado Cierre'])) {
@@ -58,7 +82,6 @@ export function processGeneralAnalysis(data, month, year) {
         }
     });
 
-    // --- ANÁLISIS ANTERIORES (SIN CAMBIOS) ---
     const overallAgentActivity = Object.fromEntries(agents.map(agent => [agent, { created: 0, closed: 0 }]));
     filteredCases.forEach(c => {
         if (agents.includes(c['Empleado Creación'])) overallAgentActivity[c['Empleado Creación']].created++;
@@ -91,13 +114,14 @@ export function processGeneralAnalysis(data, month, year) {
     return { 
         filteredCases, 
         closedCases,
-        webCreatedCasesCount: webCreatedCases.length, // <-- Nuevo
-        webCasesClosedByAgent,                       // <-- Nuevo 
-        openCases, // <-- Nuevo
-        openCasesAssignedTo, // <-- Nuevo
+        webCreatedCasesCount: webCreatedCases.length, 
+        webCasesClosedByAgent,                        
+        openCases, 
+        openCasesAssignedTo, 
         overallAgentActivity, 
         overallClosureStats, 
-        agentPerformance 
+        agentPerformance,
+        resolutionBySegment
     };
 }
 
