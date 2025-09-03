@@ -35,28 +35,28 @@ export function processGeneralAnalysis(data, month, year) {
     const closedCases = filteredCases.filter(c => c['Estado Case'] === 'Closed');
     const openCases = filteredCases.filter(c => c['Estado Case'] !== 'Closed'); // 1. Casos no cerrados (abiertos)
 
-    // Agrupamos los casos cerrados por segmento comercial
-    const casesBySegment = closedCases.reduce((acc, c) => {
-        const segment = c['Segmento Comercial'] || 'No especificado';
-        if (!acc[segment]) {
-            acc[segment] = [];
+     // --- CAMBIO CLAVE AQUÍ: Agrupamos por Modelo Comercial ---
+    const casesByModel = closedCases.reduce((acc, c) => {
+        const model = c['Modelo Comercial'] || 'No especificado';
+        if (!acc[model]) {
+            acc[model] = [];
         }
-        acc[segment].push(c);
+        acc[model].push(c);
         return acc;
     }, {});
 
-    // Para cada segmento, calculamos las estadísticas de tiempo de cierre
-    const resolutionBySegment = {};
-    for (const segment in casesBySegment) {
-        const segmentCases = casesBySegment[segment];
-        const stats = createStatObject(); // { '<24hs': 0, ... }
+    // Calculamos las estadísticas para cada Modelo Comercial
+    const resolutionByModel = {}; // <-- Renombrada la variable
+    for (const model in casesByModel) {
+        const modelCases = casesByModel[model];
+        const stats = createStatObject();
         
-        segmentCases.forEach(c => {
+        modelCases.forEach(c => {
             const diffHours = (c['Fecha de Cierre'].getTime() - c['Fecha de Creacion'].getTime()) / 3600000;
             const bucket = getTimeBucket(diffHours);
             stats[bucket]++;
         });
-        resolutionBySegment[segment] = stats;
+        resolutionByModel[model] = stats;
     }
 
     // Conteo de casos abiertos asignados a cada agente
@@ -121,7 +121,7 @@ export function processGeneralAnalysis(data, month, year) {
         overallAgentActivity, 
         overallClosureStats, 
         agentPerformance,
-        resolutionBySegment
+        resolutionByModel
     };
 }
 
