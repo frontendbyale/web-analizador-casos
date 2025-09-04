@@ -472,13 +472,13 @@ export function displayGeneralResults(analysis, monthName, year) {
 
     if (finalCsvData.length > 0) {
         document.getElementById('downloadBtn').addEventListener('click', () => {
-            const csvString = Papa.unparse(finalCsvData);
+            const csvString = papa.unparse(finalCsvData);
             // ... lógica de descarga ...
             const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `casos_${lastMonthName}_procesados.csv`;
+            a.download = `casos_${monthName}_procesados.csv`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
