@@ -1,4 +1,5 @@
 // src/js/dom-updates.js
+import papa from 'papaparse'
 // --- Instancias para los Gráficos ---
 // Guardamos una referencia a cada gráfico para poder actualizarlos o destruirlos.
 let closureChartInstance = null;
