@@ -1,10 +1,4 @@
 // src/js/ui.js
-
-
-
-/**
- * Inicializa la funcionalidad de las pestañas de navegación.
- */
 export function initializeTabs() {
     const tabs = [
         { button: document.getElementById('tab-analisis'), content: document.getElementById('content-analisis') },
@@ -15,16 +9,15 @@ export function initializeTabs() {
     ];
     const activeClasses = 'text-indigo-600 dark:text-indigo-400 border-indigo-500';
     const inactiveClasses = 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 border-transparent hover:border-slate-300 dark:hover:border-slate-600';
-
     tabs.forEach(tab => {
-        if (tab.button) {
+        if (tab.button && tab.content) {
             tab.button.addEventListener('click', () => {
                 tabs.forEach(t => {
                     if (t.content) t.content.classList.add('hidden');
-                    if (t.button) t.button.className = t.button.className.replace(activeClasses, inactiveClasses);
+                    if (t.button) t.button.className = t.button.className.replace(activeClasses, inactiveClasses).trim();
                 });
-                if (tab.content) tab.content.classList.remove('hidden');
-                if (tab.button) tab.button.className = tab.button.className.replace(inactiveClasses, activeClasses);
+                tab.content.classList.remove('hidden');
+                tab.button.className = tab.button.className.replace(inactiveClasses, activeClasses).trim();
             });
         }
     });

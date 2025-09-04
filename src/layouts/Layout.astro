@@ -1,28 +1,18 @@
----                            
- import '../styles/global.css'
- const {title} = Astro.props 
----         
-
+---
+// src/layouts/Layout.astro
+import "../styles/global.css"; // Asegúrate de que este archivo exista
+const { title } = Astro.props;
+---
 
 <!doctype html>
-<html lang="en">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width" />
-		<link rel="icon" type="image/svg+xml" href="/chart.svg" />
-		<meta name="generator" content={Astro.generator} />
-		<title>{title}</title>
-	</head>
-	<body class="bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
-        <slot />
-    </body>
+<html lang="es" class="">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <link rel="icon" type="image/svg+xml" href="/chart.svg" />
+    <title>{title}</title>
+  </head>
+  <body class="bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
+    <slot />
+  </body>
 </html>
-
-<style>
-	html,
-	body {
-		margin: 0;
-		width: 100%;
-		height: 100%;
-	}
-</style>

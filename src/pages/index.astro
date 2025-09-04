@@ -1,34 +1,26 @@
 ---
 // src/pages/index.astro
-import Layout from '../layouts/Layout.astro';
-import Nav from '../components/Nav.astro';
-import AnalizadorCasos from '../components/AnalizadorCasos.astro';
-import ReclamosSemana from '../components/ReclamosSemana.astro';
-import TopStats from '../components/TopStats.astro';
-import Escalados from '../components/Escalados.astro';
-import Anual from '../components/Anual.astro';
+import Layout from "../layouts/Layout.astro";
+import Nav from "../components/Nav.astro";
+import AnalizadorCasos from "../components/AnalizadorCasos.astro";
+import ReclamosSemana from "../components/ReclamosSemana.astro";
+import TopStats from "../components/TopStats.astro";
+import Escalados from "../components/Escalados.astro";
+import Anual from "../components/Anual.astro";
 ---
 
 <Layout title="Panel de Análisis de Casos">
-    <main class="w-full">
-        <Nav />
-        <div id="content-analisis" class="tab-content">
-            <AnalizadorCasos />
-        </div>
-        <div id="content-reclamos" class="tab-content hidden">
-            <ReclamosSemana />
-        </div>
-        <div id="content-top-stats" class="tab-content hidden">
-            <TopStats /> 
-        </div>
-        <div id="content-escalados" class="tab-content hidden"> 
-            <Escalados /> 
-        </div>
-        <div id="content-anual" class="tab-content hidden"> 
-            <Anual /> 
-        </div>
-    </main>
-    
-    <script src="../js/main.js"></script>
-    <script src="../../node_modules/chart.js/dist/chart.umd.min.js"></script>
+  <main class="w-full">
+    <Nav />
+    <div id="content-analisis" class="tab-content"><AnalizadorCasos /></div>
+    <div id="content-reclamos" class="tab-content hidden">
+      <ReclamosSemana />
+    </div>
+    <div id="content-top-stats" class="tab-content hidden"><TopStats /></div>
+    <div id="content-escalados" class="tab-content hidden"><Escalados /></div>
+    <div id="content-anual" class="tab-content hidden"><Anual /></div>
+  </main>
+
+  <script src="../js/main.js"></script>
+  <script src="../../node_modules/chart.js/dist/chart.umd.min.js"></script>
 </Layout>

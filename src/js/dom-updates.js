@@ -1,48 +1,40 @@
 // src/js/dom-updates.js
-import Papa from 'papaparse'; // PapaParse se usa aquí solo para la descarga
-
-// Variables para guardar las instancias de los gráficos y poder destruirla antes de crear una nueva
+// --- Instancias para los Gráficos ---
+// Guardamos una referencia a cada gráfico para poder actualizarlos o destruirlos.
 let closureChartInstance = null;
 let weeklyChartInstance = null;
-let agentChartInstances = {};
 let escalationChartInstance = null;
-let yearlyChartInstance = null; 
+let agentChartInstances = {};
+let yearlyChartInstance = null;
 let monthlyChartInstances = [];
 
+
+// =================================================================
+// FUNCIONES DE RENDERIZADO DE GRÁFICOS
+// =================================================================
+
 /**
- * Renderiza el gráfico de torta de tiempos de cierre.
- * @param {Object} overallClosureStats - Los datos para el gráfico.
- * @param {number} totalClosed - El número total de casos cerrados.
+ * Renderiza el gráfico de torta de tiempos de cierre general.
  */
 function renderClosureChart(overallClosureStats, totalClosed) {
     const ctx = document.getElementById('closureTimeChart');
     if (!ctx) return;
-
-    // Si ya existe un gráfico, lo destruimos para evitar conflictos
-    if (closureChartInstance) {
-        closureChartInstance.destroy();
-    }
+    if (closureChartInstance) closureChartInstance.destroy();
 
     const labels = Object.keys(overallClosureStats);
     const data = Object.values(overallClosureStats);
-
     const isDarkMode = document.documentElement.classList.contains('dark');
-    const chartFontColor = isDarkMode ? '#cbd5e1' : '#475569'; // slate-300 / slate-600
+    const chartFontColor = isDarkMode ? '#cbd5e1' : '#475569';
 
     closureChartInstance = new Chart(ctx, {
-        type: 'pie', // 'pie' o 'doughnut' para gráfico de torta
+        type: 'pie',
         data: {
             labels: labels,
             datasets: [{
                 label: '# de Casos',
                 data: data,
-                backgroundColor: [
-                    'rgba(79, 70, 229, 0.7)',  // Indigo
-                    'rgba(5, 150, 105, 0.7)',   // Emerald
-                    'rgba(217, 119, 6, 0.7)',  // Amber
-                    'rgba(220, 38, 38, 0.7)'   // Red
-                ],
-                borderColor: isDarkMode ? '#1e293b' : '#ffffff', // slate-800 / white
+                backgroundColor: ['rgba(79, 70, 229, 0.7)', 'rgba(5, 150, 105, 0.7)', 'rgba(217, 119, 6, 0.7)', 'rgba(220, 38, 38, 0.7)'],
+                borderColor: isDarkMode ? '#1e293b' : '#ffffff',
                 borderWidth: 2
             }]
         },
@@ -50,31 +42,14 @@ function renderClosureChart(overallClosureStats, totalClosed) {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        color: chartFontColor,
-                        font: {
-                            size: 12
-                        }
-                    }
-                },
-                title: {
-                    display: true,
-                    text: 'Distribución de Tiempos de Cierre',
-                    color: chartFontColor,
-                    font: {
-                        size: 16,
-                        weight: 'bold'
-                    }
-                },
+                legend: { position: 'bottom', labels: { color: chartFontColor, font: { size: 12 } } },
+                title: { display: true, text: 'Distribución de Tiempos de Cierre', color: chartFontColor, font: { size: 16, weight: 'bold' } },
                 tooltip: {
                     callbacks: {
                         label: function(context) {
-                            const label = context.label || '';
                             const value = context.raw || 0;
                             const percentage = totalClosed > 0 ? ((value / totalClosed) * 100).toFixed(1) : 0;
-                            return `${label}: ${value} casos (${percentage}%)`;
+                            return `${context.label}: ${value} casos (${percentage}%)`;
                         }
                     }
                 }
@@ -84,115 +59,34 @@ function renderClosureChart(overallClosureStats, totalClosed) {
 }
 
 /**
- * --- NUEVA FUNCIÓN ---
- * Renderiza el gráfico de barras para el análisis semanal por razón.
- * @param {Object} claimsByReason - Los datos de reclamos agrupados por razón.
- */
-function renderWeeklyChart(claimsByReason) {
-    const ctx = document.getElementById('weeklyAnalysisChart');
-    if (!ctx) return;
-
-    if (weeklyChartInstance) {
-        weeklyChartInstance.destroy();
-    }
-
-    // Preparamos los datos para el gráfico
-    const labels = Object.keys(claimsByReason);
-    const data = labels.map(label => claimsByReason[label].length);
-
-    const isDarkMode = document.documentElement.classList.contains('dark');
-    const chartFontColor = isDarkMode ? '#cbd5e1' : '#475569';
-    const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
-
-    weeklyChartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Cantidad de Reclamos',
-                data: data,
-                backgroundColor: 'rgba(129, 140, 248, 0.7)', // Indigo
-                borderColor: 'rgba(129, 140, 248, 1)',
-                borderWidth: 1
-            }]
-        },
-        options: {
-            indexAxis: 'y', // <-- Gráfico de barras horizontal para mejor lectura
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false // No es necesaria para un solo dataset
-                },
-                title: {
-                    display: true,
-                    text: 'Reclamos por Razón en la Última Semana',
-                    color: chartFontColor,
-                    font: { size: 16, weight: 'bold' }
-                }
-            },
-            scales: {
-                x: {
-                    ticks: { color: chartFontColor },
-                    grid: { color: gridColor }
-                },
-                y: {
-                    ticks: { color: chartFontColor },
-                    grid: { color: 'transparent' }
-                }
-            }
-        }
-    });
-}
-
-/**
- * --- NUEVA FUNCIÓN ---
- * Renderiza un gráfico de torta individual para el rendimiento de un agente.
- * @param {string} agent - El nombre del agente (para el ID del canvas).
- * @param {Object} agentOverallStats - Los datos de rendimiento del agente.
+ * Renderiza un gráfico de barras horizontal para el rendimiento de un agente.
  */
 function renderAgentPerformanceChart(agent, agentOverallStats) {
     const canvasId = `agent-chart-${agent}`;
     const ctx = document.getElementById(canvasId);
-    if (!ctx) {
-        console.error(`Canvas con id ${canvasId} no encontrado.`);
-        return;
-    }
-
-    if (agentChartInstances[agent]) {
-        agentChartInstances[agent].destroy();
-    }
+    if (!ctx) return;
+    if (agentChartInstances[agent]) agentChartInstances[agent].destroy();
 
     const labels = Object.keys(agentOverallStats);
     const data = Object.values(agentOverallStats);
     const totalCases = data.reduce((a, b) => a + b, 0);
-
     const isDarkMode = document.documentElement.classList.contains('dark');
     const chartFontColor = isDarkMode ? '#cbd5e1' : '#475569';
     const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
-
-    // Paleta de colores consistente con el gráfico principal
-    const backgroundColors = [
-        'rgba(79, 70, 229, 0.7)',  // Menos de 24hs -> Indigo
-        'rgba(5, 150, 105, 0.7)',   // 24-48hs -> Emerald
-        'rgba(217, 119, 6, 0.7)',  // 48-72hs -> Amber
-        'rgba(220, 38, 38, 0.7)'   // +72hs -> Red
-    ];
+    const backgroundColors = ['rgba(79, 70, 229, 0.7)', 'rgba(5, 150, 105, 0.7)', 'rgba(217, 119, 6, 0.7)', 'rgba(220, 38, 38, 0.7)'];
 
     agentChartInstances[agent] = new Chart(ctx, {
-        type: 'bar', // <-- Cambiado a 'bar'
+        type: 'bar',
         data: {
             labels: labels,
             datasets: [{
                 label: 'Cantidad de Casos',
                 data: data,
-                backgroundColor: backgroundColors, // <-- Colores consistentes
-                borderColor: backgroundColors.map(color => color.replace('0.7', '1')),
-                borderWidth: 1
+                backgroundColor: backgroundColors,
             }]
         },
         options: {
-            indexAxis: 'x', // <-- Eje Y como principal para barras horizontales
+            indexAxis: 'x',
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
@@ -211,49 +105,246 @@ function renderAgentPerformanceChart(agent, agentOverallStats) {
             scales: {
                 x: {
                     beginAtZero: true,
-                    ticks: { 
-                        color: chartFontColor,
-                    },
+                    ticks: { color: chartFontColor, callback: function(value) { if (Number.isInteger(value)) return value; } },
                     grid: { color: gridColor }
                 },
-                y: {
-                    ticks: { color: chartFontColor },
-                    grid: { color: 'transparent' }
-                }
+                y: { ticks: { color: chartFontColor }, grid: { color: 'transparent' } }
             }
         }
     });
 }
 
-export function renderAllCharts(analysis) {
-    if (!analysis) return;
-    const { closedCases, overallClosureStats, agentPerformance } = analysis;
+/**
+ * Renderiza el gráfico de barras para el análisis semanal por razón.
+ */
+function renderWeeklyChart(claimsByReason) {
+    const ctx = document.getElementById('weeklyAnalysisChart');
+    if (!ctx) return;
+    if (weeklyChartInstance) weeklyChartInstance.destroy();
 
-    // Renderizar gráfico principal
-    if (closedCases.length > 0) {
-        renderClosureChart(overallClosureStats, closedCases.length);
-    }
-    
-    // Renderizar gráficos de agentes
-    Object.entries(agentPerformance).forEach(([agent, data]) => {
-        if (data.totalClosed > 0) {
-            renderAgentPerformanceChart(agent, data.overall);
+    const labels = Object.keys(claimsByReason);
+    const data = labels.map(label => claimsByReason[label].length);
+    const isDarkMode = document.documentElement.classList.contains('dark');
+    const chartFontColor = isDarkMode ? '#cbd5e1' : '#475569';
+    const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+
+    weeklyChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Cantidad de Reclamos',
+                data: data,
+                backgroundColor: 'rgba(129, 140, 248, 0.7)',
+                borderColor: 'rgba(129, 140, 248, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                title: { display: true, text: 'Reclamos por Razón en la Última Semana', color: chartFontColor, font: { size: 16, weight: 'bold' } }
+            },
+            scales: {
+                x: { ticks: { color: chartFontColor }, grid: { color: gridColor } },
+                y: { ticks: { color: chartFontColor }, grid: { color: 'transparent' } }
+            }
         }
     });
 }
 
 /**
- * Muestra los resultados del análisis general en la página.
- * @param {Object} analysis - Los datos analizados.
- * @param {string} title - Título para la sección de resultados.
+ * Renderiza el gráfico de torta para la distribución de bandejas de escalado.
  */
-export function displayGeneralResults(analysis, lastMonthName, lastYear) {
+function renderEscalationChart(bandejaCounts) {
+    const ctx = document.getElementById('escalationChart');
+    if (!ctx) return;
+    if (escalationChartInstance) escalationChartInstance.destroy();
+
+    const labels = Object.keys(bandejaCounts);
+    const data = Object.values(bandejaCounts);
+    const isDarkMode = document.documentElement.classList.contains('dark');
+    const chartFontColor = isDarkMode ? '#cbd5e1' : '#475569';
+
+    escalationChartInstance = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: '# de Casos',
+                data: data,
+                backgroundColor: ['rgba(79, 70, 229, 0.7)', 'rgba(5, 150, 105, 0.7)', 'rgba(217, 119, 6, 0.7)', 'rgba(220, 38, 38, 0.7)', 'rgba(107, 33, 168, 0.7)'],
+                borderColor: isDarkMode ? '#1e293b' : '#ffffff',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { color: chartFontColor } },
+                title: { display: true, text: 'Distribución de Escalados por Bandeja', color: chartFontColor, font: { size: 16 } }
+            }
+        }
+    });
+}
+
+/**
+ * Renderiza el gráfico de líneas múltiples para el análisis anual.
+ */
+function renderYearlyLineChart(analysis) {
+    const ctx = document.getElementById('yearlyLineChart');
+    if (!ctx) return;
+    if (yearlyChartInstance) yearlyChartInstance.destroy();
     
-    const { filteredCases, closedCases, webCreatedCasesCount, webCasesClosedByAgent, openCases, openCasesAssignedTo, overallAgentActivity, overallClosureStats, agentPerformance, resolutionByModel } = analysis;
-    const resultsDiv = document.getElementById('results');
-    if (!resultsDiv) return;
+    const { monthlyData, year } = analysis;
+    const labels = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+    const isDarkMode = document.documentElement.classList.contains('dark');
+    const chartFontColor = isDarkMode ? '#cbd5e1' : '#475569';
+    const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+    const categoryColors = {
+        'Menos de 24hs': 'rgba(79, 70, 229, 1)', 'Entre 24hs y 48hs': 'rgba(5, 150, 105, 1)',
+        'Entre 48hs y 72hs': 'rgba(217, 119, 6, 1)', 'Más de 72hs': 'rgba(220, 38, 38, 1)'
+    };
+    const datasets = Object.keys(monthlyData).map(category => ({
+        label: category, data: monthlyData[category], borderColor: categoryColors[category],
+        backgroundColor: categoryColors[category].replace('1)', '0.2)'),
+        fill: false, tension: 0.3, pointRadius: 4, pointBackgroundColor: categoryColors[category],
+    }));
+
+    yearlyChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: { labels: labels, datasets: datasets },
+        options: {
+            responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { position: 'bottom', labels: { color: chartFontColor } },
+                title: { display: true, text: `Evolución de Tiempos de Cierre - ${year}`, color: chartFontColor, font: { size: 18 } }
+            },
+            scales: {
+                x: { ticks: { color: chartFontColor }, grid: { color: gridColor } },
+                y: { ticks: { color: chartFontColor }, grid: { color: gridColor }, beginAtZero: true }
+            }
+        }
+    });
+}
+
+/**
+ * Renderiza un gráfico de barras individual para un mes específico.
+ */
+function renderMonthlyBarChart(monthIndex, dataForMonth) {
+    const canvasId = `monthly-bar-chart-${monthIndex}`;
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return;
+    if (monthlyChartInstances[monthIndex]) monthlyChartInstances[monthIndex].destroy();
     
-    // Preparar CSV para descarga
+    const labels = Object.keys(dataForMonth);
+    const data = Object.values(dataForMonth);
+    const isDarkMode = document.documentElement.classList.contains('dark');
+    const chartFontColor = isDarkMode ? '#cbd5e1' : '#475569';
+    const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+    const backgroundColors = ['rgba(79, 70, 229, 0.7)', 'rgba(5, 150, 105, 0.7)', 'rgba(217, 119, 6, 0.7)', 'rgba(220, 38, 38, 0.7)'];
+
+    monthlyChartInstances[monthIndex] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Cantidad de Casos',
+                data: data,
+                backgroundColor: backgroundColors
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: (context) => `Casos: ${context.raw || 0}` } }
+            },
+            scales: {
+                x: { ticks: { color: chartFontColor, font: { size: 10 } }, grid: { color: 'transparent' } },
+                y: { beginAtZero: true, ticks: { color: chartFontColor, callback: function(value) { if (Number.isInteger(value)) return value; } }, grid: { color: gridColor } }
+            }
+        }
+    });
+}
+
+
+// =================================================================
+// FUNCIONES ORQUESTADORAS DE GRÁFICOS
+// =================================================================
+
+/**
+ * Dibuja o redibuja todos los gráficos del análisis general.
+ */
+export function renderAllCharts(analysis) {
+    if (!analysis) return;
+    const { closedCases, overallClosureStats, agentPerformance } = analysis;
+    if (closedCases.length > 0) renderClosureChart(overallClosureStats, closedCases.length);
+    Object.entries(agentPerformance).forEach(([agent, data]) => {
+        if (data.totalClosed > 0) renderAgentPerformanceChart(agent, data.overall);
+    });
+}
+
+/**
+ * Dibuja o redibuja todos los gráficos de la sección ANUAL.
+ */
+export function renderYearlyCharts(analysis) {
+    if (!analysis) return;
+    renderYearlyLineChart(analysis);
+    const { monthlyData } = analysis;
+    const activeMonths = [];
+    for (let i = 0; i < 12; i++) {
+        const totalForMonth = Object.values(monthlyData).reduce((sum, categoryData) => sum + categoryData[i], 0);
+        if (totalForMonth > 0) activeMonths.push(i);
+    }
+    activeMonths.forEach(monthIndex => {
+        const dataForMonth = {
+            ' < 24hs': monthlyData['Menos de 24hs'][monthIndex], '24-48hs': monthlyData['Entre 24hs y 48hs'][monthIndex],
+            '48-72hs': monthlyData['Entre 48hs y 72hs'][monthIndex], '> 72hs': monthlyData['Más de 72hs'][monthIndex]
+        };
+        renderMonthlyBarChart(monthIndex, dataForMonth);
+    });
+}
+
+
+// =================================================================
+// FUNCIONES PRINCIPALES DE VISUALIZACIÓN
+// =================================================================
+
+/**
+ * Renderiza el panel de filtro con checkboxes para los agentes.
+ */
+export function renderAgentFilter(allAgents, selectedAgents) {
+    const filterContainer = document.getElementById('agent-filter-container');
+    if (!filterContainer) return;
+    filterContainer.innerHTML = `
+        <div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-md border border-slate-200 dark:border-slate-700">
+            <h3 class="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-2">Filtrar por Agente</h3>
+            <div id="agent-checkboxes" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                ${allAgents.map(agent => `
+                    <label class="flex items-center space-x-2 text-sm text-slate-600 dark:text-slate-300 cursor-pointer">
+                        <input type="checkbox" value="${agent}" class="agent-filter-checkbox h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" ${selectedAgents.includes(agent) ? 'checked' : ''}>
+                        <span>${agent}</span>
+                    </label>
+                `).join('')}
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Muestra la ESTRUCTURA HTML del análisis general (sin dibujar los gráficos).
+ */
+export function displayGeneralResults(analysis, monthName, year) {
+    const {overallClosureStats, filteredCases, closedCases, openCases, openCasesAssignedTo, webCreatedCasesCount, webCasesClosedByAgent, overallAgentActivity, agentPerformance, resolutionByModel } = analysis;
+    const contentDiv = document.getElementById('general-analysis-content');
+    if (!contentDiv) return;
+
     const finalCsvData = filteredCases.map(c => ({
         'Modelo Comercial': c['Modelo Comercial'],
         'Segmento Comercial': c['Segmento Comercial'],
@@ -278,11 +369,10 @@ export function displayGeneralResults(analysis, lastMonthName, lastYear) {
                 </button>
             </div>`; // El HTML del botón de descarga
     }
-    
-    // El resto del innerHTML para los resultados...
-      resultsDiv.innerHTML = `
+
+    contentDiv.innerHTML = `
         <div class="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700">
-            <h2 class="text-2xl font-bold text-slate-700 dark:text-slate-200 mb-4">Resumen General de ${lastMonthName} de ${lastYear}</h2>
+            <h2 class="text-2xl font-bold text-slate-700 dark:text-slate-200 mb-4">Resumen General de ${monthName} de ${year}</h2>
             <div class="relative h-64 md:h-80 mb-1">
                 <canvas id="closureTimeChart"></canvas>
             </div>
@@ -553,46 +643,6 @@ export function displayTopStats(analysis) {
 }
 
 /**
- * Renderiza el gráfico de torta para la distribución de bandejas de escalado.
- */
-function renderEscalationChart(bandejaCounts) {
-    const ctx = document.getElementById('escalationChart');
-    if (!ctx) return;
-
-    if (escalationChartInstance) {
-        escalationChartInstance.destroy();
-    }
-
-    const labels = Object.keys(bandejaCounts);
-    const data = Object.values(bandejaCounts);
-    const isDarkMode = document.documentElement.classList.contains('dark');
-    const chartFontColor = isDarkMode ? '#cbd5e1' : '#475569';
-
-    escalationChartInstance = new Chart(ctx, {
-        type: 'pie',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: '# de Casos',
-                data: data,
-                backgroundColor: ['rgba(79, 70, 229, 0.7)', 'rgba(5, 150, 105, 0.7)', 'rgba(217, 119, 6, 0.7)', 'rgba(220, 38, 38, 0.7)', 'rgba(107, 33, 168, 0.7)'],
-                borderColor: isDarkMode ? '#1e293b' : '#ffffff',
-                borderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { position: 'bottom', labels: { color: chartFontColor } },
-                title: { display: true, text: 'Distribución de Escalados por Bandeja', color: chartFontColor, font: { size: 16 } }
-            }
-        }
-    });
-}
-
-
-/**
  * Muestra los resultados del análisis de casos escalados.
  */
 export function displayEscalationResults(analysis) {
@@ -637,157 +687,6 @@ export function displayEscalationResults(analysis) {
     // Renderizamos el gráfico una vez que el canvas existe
     renderEscalationChart(bandejaCounts);
 }
-
-function renderYearlyLineChart(analysis) {
-    const ctx = document.getElementById('yearlyLineChart');
-    if (!ctx) return;
-
-    if (yearlyChartInstance) {
-        yearlyChartInstance.destroy();
-    }
-    
-    const { monthlyData, year } = analysis;
-    const labels = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-    const isDarkMode = document.documentElement.classList.contains('dark');
-    const chartFontColor = isDarkMode ? '#cbd5e1' : '#475569';
-    const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
-
-    console.log(monthlyData)
-
-    // Definimos los colores para cada categoría, manteniendo la consistencia
-    const categoryColors = {
-        'Menos de 24hs': 'rgba(79, 70, 229, 1)',      // Indigo
-        'Entre 24hs y 48hs': 'rgba(5, 150, 105, 1)',  // Emerald
-        'Entre 48hs y 72hs': 'rgba(217, 119, 6, 1)',  // Amber
-        'Más de 72hs': 'rgba(220, 38, 38, 1)'         // Red
-    };
-
-    // Creamos un "dataset" (una línea) para cada categoría
-    const datasets = Object.keys(monthlyData).map(category => ({
-        label: category,
-        data: monthlyData[category],
-        borderColor: categoryColors[category],
-        backgroundColor: categoryColors[category].replace('1)', '0.2)'), // Color semitransparente para el área bajo la línea
-        fill: false,
-        tension: 0.3,
-        pointRadius: 4,
-        pointBackgroundColor: categoryColors[category],
-    }));
-
-    yearlyChartInstance = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: datasets // <-- Usamos el array de datasets que creamos
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: { // Para que el tooltip muestre todas las líneas al pasar el mouse
-                mode: 'index',
-                intersect: false,
-            },
-            plugins: {
-                legend: { 
-                    position: 'bottom', // Leyenda abajo para más claridad
-                    labels: { color: chartFontColor } 
-                },
-                title: { display: true, text: `Evolución de Tiempos de Cierre - ${year}`, color: chartFontColor, font: { size: 18 } }
-            },
-            scales: {
-                x: { ticks: { color: chartFontColor }, grid: { color: gridColor } },
-                y: { 
-                    ticks: { color: chartFontColor }, 
-                    grid: { color: gridColor },
-                    beginAtZero: true // Asegura que el eje Y empiece en 0
-                }
-            }
-        }
-    });
-}
-
-/**
- * --- NUEVA FUNCIÓN ---
- * Renderiza un gráfico de barras individual para un mes específico.
- * @param {number} monthIndex - El índice del mes (0-11).
- * @param {Object} dataForMonth - Los datos de las 4 categorías para ese mes.
- * @param {number} totalCases - El total de casos en ese mes.
- */
-function renderMonthlyBarChart(monthIndex, dataForMonth) {
-    const canvasId = `monthly-bar-chart-${monthIndex}`;
-    const ctx = document.getElementById(canvasId);
-    if (!ctx) return;
-
-    if (monthlyChartInstances[monthIndex]) {
-        monthlyChartInstances[monthIndex].destroy();
-    }
-
-    const labels = Object.keys(dataForMonth);
-    const data = Object.values(dataForMonth);
-    const isDarkMode = document.documentElement.classList.contains('dark');
-    const chartFontColor = isDarkMode ? '#cbd5e1' : '#475569';
-    const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
-    const backgroundColors = ['rgba(79, 70, 229, 0.7)', 'rgba(5, 150, 105, 0.7)', 'rgba(217, 119, 6, 0.7)', 'rgba(220, 38, 38, 0.7)'];
-
-    monthlyChartInstances[monthIndex] = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Cantidad de Casos',
-                data: data,
-                backgroundColor: backgroundColors
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    callbacks: { label: (context) => `Casos: ${context.raw || 0}` }
-                }
-            },
-            scales: {
-                x: { ticks: { color: chartFontColor }, grid: { color: 'transparent' } },
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        color: chartFontColor,
-                        callback: function(value) { if (value % 1 === 0) return value; }
-                    },
-                    grid: { color: gridColor }
-                }
-            }
-        }
-    });
-}
-
-export function renderYearlyCharts(analysis) {
-    if (!analysis) return;
-
-    // 1. Renderizar el gráfico de líneas principal
-    renderYearlyLineChart(analysis);
-
-    // 2. Renderizar la cuadrícula de gráficos de barras mensuales
-    const { monthlyData } = analysis;
-    const activeMonths = [];
-    for (let i = 0; i < 12; i++) {
-        const totalForMonth = Object.values(monthlyData).reduce((sum, categoryData) => sum + categoryData[i], 0);
-        if (totalForMonth > 0) {
-            activeMonths.push(i);
-        }
-    }
-    
-    activeMonths.forEach(monthIndex => {
-        const dataForMonth = {
-            ' < 24hs': monthlyData['Menos de 24hs'][monthIndex], '24-48hs': monthlyData['Entre 24hs y 48hs'][monthIndex],
-            '48-72hs': monthlyData['Entre 48hs y 72hs'][monthIndex], '> 72hs': monthlyData['Más de 72hs'][monthIndex]
-        };
-        renderMonthlyBarChart(monthIndex, dataForMonth);
-    });
-}
-
 
 /**
  * Muestra los resultados del análisis anual.
