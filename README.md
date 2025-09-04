@@ -2,8 +2,8 @@
 
 Este proyecto es una aplicación web interactiva y completa, construida con **Astro** y **Tailwind CSS**, diseñada para realizar análisis complejos sobre datos de operaciones. La plataforma permite a los usuarios subir archivos CSV o TSV y obtener visualizaciones detalladas, métricas clave y rankings de rendimiento a través de múltiples paneles de análisis especializados.
 
-![Captura en modo claro](/images/screenshot_light.png)
-![Captura en modo oscuro](/images/screenshot_dark.png)
+![Captura en modo claro](images/screenshot_light.png)
+![Captura en modo oscuro](images/screenshot_dark.png)
 
 ---
 
