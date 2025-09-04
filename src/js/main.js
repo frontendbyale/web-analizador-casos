@@ -1,8 +1,8 @@
 // src/js/main.js
 import Papa from 'papaparse';
 import { initializeTabs } from './ui.js';
-import { prepareData, getAgentsFromData, processGeneralAnalysis, processWeeklyAnalysis, processTopStats, processEscalationAnalysis, processYearlyAnalysis } from './analysis.js';
-import { renderAgentFilter, displayGeneralResults, renderAllCharts, displayWeeklyResults, displayTopStats, displayEscalationResults, displayYearlyResults, renderYearlyCharts } from './dom-updates.js';
+import { processContactCenterAnalysis  ,prepareData, getAgentsFromData, processGeneralAnalysis, processWeeklyAnalysis, processTopStats, processEscalationAnalysis, processYearlyAnalysis } from './analysis.js';
+import { displayContactCenterResults, renderAgentFilter, displayGeneralResults, renderAllCharts, displayWeeklyResults, displayTopStats, displayEscalationResults, displayYearlyResults, renderYearlyCharts } from './dom-updates.js';
 
 let allCleanDataStore = null;
 let filteredByPeriodDataStore = null;
@@ -106,11 +106,22 @@ function setupEventListeners() {
                     return;
                 }
                 allAgents = getAgentsFromData(allCleanDataStore);
-                selectedAgents = [...allAgents];
+
+                const closingAgentsSet = new Set();
+                const serviceAccount = "service-account-abe26a47";
+                
+                filteredByPeriodDataStore.forEach(c => {
+                    const closer = c['Empleado Cierre'];
+                    if (c['Estado Case'] === 'Closed' && closer && closer !== serviceAccount) {
+                        closingAgentsSet.add(closer);
+                    }
+                });
+                selectedAgents = Array.from(closingAgentsSet).sort();
                 lastMonthName = monthSelect.options[selectedMonth].text;
                 lastYear = selectedYear;
                 renderAgentFilter(allAgents, selectedAgents);
                 runAndDisplayGeneralAnalysis();
+                renderAllCharts(lastGeneralAnalysis);
                 const agentCheckboxes = document.getElementById('agent-checkboxes');
                 if (agentCheckboxes) {
                     agentCheckboxes.addEventListener('change', () => {
@@ -119,7 +130,7 @@ function setupEventListeners() {
                         renderAllCharts(lastGeneralAnalysis);
                     });
                 }
-                renderAllCharts(lastGeneralAnalysis);
+                
                 processBtn.textContent = "Análisis Cargado";
                 const weeklyBtn = document.getElementById('processBtnWeek');
                 const topStatsBtn = document.getElementById('processBtnTopStats');
@@ -153,4 +164,38 @@ function setupEventListeners() {
         lastYearlyAnalysis = processYearlyAnalysis(allCleanDataStore);
         displayYearlyResults(lastYearlyAnalysis);
     });
+
+    const processBtnContact = document.getElementById('processBtnContact');
+    const tsvFileInputContact = document.getElementById('tsvFileContact');
+
+    if(processBtnContact) {
+        processBtnContact.addEventListener('click', () => {
+            const file = tsvFileInputContact.files[0];
+            if (!file) {
+                alert("Por favor, selecciona un archivo TSV de sesiones.");
+                return;
+            }
+            processBtnContact.disabled = true;
+            processBtnContact.textContent = "Procesando...";
+
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                delimiter: "\t", // <-- Indicamos que es un TSV
+                complete: (results) => {
+                    try {
+                        // Saltamos la segunda fila que contiene descripciones
+                        const data = results.data.slice(1);
+                        const analysis = processContactCenterAnalysis(data);
+                        displayContactCenterResults(analysis);
+                    } catch (error) {
+                        console.error("Error en análisis de Contact Center:", error);
+                    } finally {
+                        processBtnContact.disabled = false;
+                        processBtnContact.textContent = "Analizar Sesiones";
+                    }
+                }
+            });
+        });
+    }
 }

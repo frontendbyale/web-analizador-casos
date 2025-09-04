@@ -736,3 +736,33 @@ export function displayYearlyResults(analysis) {
     `;
     renderYearlyCharts(analysis)
 }
+
+
+/**
+ * Muestra los resultados del análisis de Contact Center.
+ */
+export function displayContactCenterResults(analysis) {
+    const resultsDiv = document.getElementById('resultsContact');
+    if (!resultsDiv) return;
+
+    const metrics = [
+        { label: 'Total de Chats', value: analysis.totalChats },
+        { label: 'Chats Atendidos', value: analysis.totalChatsAnswered },
+        { label: 'Service Level (60s)', value: analysis.serviceLevel },
+        { label: 'ASA (Espera 1er msj)', value: analysis.asa },
+        { label: 'ASQ (Espera en cola)', value: analysis.asq },
+        { label: 'AHT (T.M.O.)', value: analysis.aht },
+        { label: 'Transferidos', value: analysis.totalTransfers },
+    ];
+
+    resultsDiv.innerHTML = `
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            ${metrics.map(metric => `
+                <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 text-center">
+                    <h3 class="text-lg font-semibold text-slate-600 dark:text-slate-300">${metric.label}</h3>
+                    <p class="text-4xl font-bold text-indigo-600 dark:text-indigo-400 mt-2">${metric.value}</p>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}

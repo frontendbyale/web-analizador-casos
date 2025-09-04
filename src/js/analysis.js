@@ -231,3 +231,82 @@ export function processYearlyAnalysis(allCleanData) {
     });
     return { monthlyData, year: currentYear };
 }
+
+/**
+ * --- FUNCIÓN ACTUALIZADA ---
+ * Procesa los datos de sesiones para calcular métricas de Contact Center, incluyendo ASQ.
+ */
+export function processContactCenterAnalysis(data) {
+    const validSessions = data.filter(row => row['Id Sesión'] && row['Id Sesión'].trim() !== '');
+
+    // Variables para los totales
+    let totalChatsAnswered = 0;
+    let totalTransfers = 0;
+    let totalHandleTime = 0;
+
+    // Variables para promedios (Sumas y Conteos)
+    let asqSum = 0, asqCount = 0;
+    let asaSum = 0, asaCount = 0;
+    let slCount = 0, slMet = 0;
+
+    validSessions.forEach(session => {
+        const answeredCount = parseInt(session['Conversaciones cerradas'], 10);
+
+        // --- NUEVA LÓGICA DE CLASIFICACIÓN ---
+        if (answeredCount > 0) {
+            // Si hay conversaciones cerradas, la sesión cuenta como ATENDIDA.
+            totalChatsAnswered += answeredCount;
+            totalHandleTime += (parseFloat(session['Conversación con agente']) || 0) * answeredCount;
+
+            const waitTimeQueue = parseFloat(session['Espera en cola']); // ASQ
+            const waitTimeAgent = parseFloat(session['Espera agente']); // ASA
+
+            // Calcular ASQ solo si hay dato
+            if (!isNaN(waitTimeQueue)) {
+                asqSum += waitTimeQueue * answeredCount;
+                asqCount += answeredCount;
+            }
+            // Calcular ASA solo si hay dato
+            if (!isNaN(waitTimeAgent)) {
+                asaSum += waitTimeAgent * answeredCount;
+                asaCount += answeredCount;
+            }
+            // Calcular Service Level solo si ambos datos existen
+            if (!isNaN(waitTimeQueue) && !isNaN(waitTimeAgent)) {
+                const totalWait = waitTimeQueue + waitTimeAgent;
+                const serviceLevelThreshold = 60;
+                slCount += answeredCount;
+                if (totalWait <= serviceLevelThreshold) {
+                    slMet += answeredCount;
+                }
+            }
+        } else {
+            // Si no hay conversaciones cerradas, la sesión cuenta como TRANSFERIDA.
+            totalTransfers++;
+        }
+    });
+
+    // Calculamos los promedios finales
+    const asq = asqCount > 0 ? asqSum / asqCount : 0;
+    const asa = asaCount > 0 ? asaSum / asaCount : 0;
+    const aht = totalChatsAnswered > 0 ? totalHandleTime / totalChatsAnswered : 0;
+    const serviceLevel = slCount > 0 ? (slMet / slCount) * 100 : 0;
+
+    const totalChats = totalChatsAnswered + totalTransfers;
+
+    const formatTime = (seconds) => {
+        const minutes = Math.floor(seconds / 60);
+        const secs = Math.round(seconds % 60);
+        return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    return {
+        totalChats,
+        totalChatsAnswered,
+        totalTransfers,
+        asa: formatTime(asa),
+        asq: formatTime(asq),
+        aht: formatTime(aht),
+        serviceLevel: serviceLevel.toFixed(1) + '%'
+    };
+}
