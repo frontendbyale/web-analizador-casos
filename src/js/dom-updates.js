@@ -8,6 +8,7 @@ let escalationChartInstance = null;
 let agentChartInstances = {};
 let yearlyChartInstance = null;
 let monthlyChartInstances = [];
+let contactVolumeChartInstance = null;
 
 
 // =================================================================
@@ -309,6 +310,72 @@ export function renderYearlyCharts(analysis) {
             '48-72hs': monthlyData['Entre 48hs y 72hs'][monthIndex], '> 72hs': monthlyData['Más de 72hs'][monthIndex]
         };
         renderMonthlyBarChart(monthIndex, dataForMonth);
+    });
+}
+
+/**
+ * --- NUEVA FUNCIÓN ---
+ * Renderiza el gráfico de torta para el volumen de chats del Contact Center.
+ * @param {Object} analysis - Los datos del análisis.
+ */
+function renderContactVolumeChart(analysis) {
+    const ctx = document.getElementById('contactVolumeChart');
+    if (!ctx) return;
+
+    if (contactVolumeChartInstance) {
+        contactVolumeChartInstance.destroy();
+    }
+
+    const labels = ['Atendidos', 'Transferidos'];
+    const data = [analysis.totalChatsAnswered, analysis.totalTransfers];
+    
+    const isDarkMode = document.documentElement.classList.contains('dark');
+    const chartFontColor = isDarkMode ? '#cbd5e1' : '#475569';
+
+    contactVolumeChartInstance = new Chart(ctx, {
+        type: 'pie', // Gráfico de torta (estilo dona)
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data,
+                backgroundColor: [
+                    'rgba(79, 70, 229, 0.7)',  // Atendidos -> Indigo
+                    'rgba(217, 119, 6, 0.7)'   // Transferidos -> Amber
+                ],
+                borderColor: isDarkMode ? '#1e293b' : '#ffffff',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        color: chartFontColor,
+                        font: { size: 12 }
+                    }
+                },
+                title: {
+                    display: true,
+                    text: 'Volumen Total de Chats',
+                    color: chartFontColor,
+                    font: { size: 16, weight: 'bold' }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.raw || 0;
+                            const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                            return `${label}: ${value} (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
     });
 }
 
@@ -748,21 +815,32 @@ export function displayContactCenterResults(analysis) {
     const metrics = [
         { label: 'Total de Chats', value: analysis.totalChats },
         { label: 'Chats Atendidos', value: analysis.totalChatsAnswered },
+        { label: 'Transferidos', value: analysis.totalTransfers },
         { label: 'Service Level (60s)', value: analysis.serviceLevel },
         { label: 'ASA (Espera 1er msj)', value: analysis.asa },
         { label: 'ASQ (Espera en cola)', value: analysis.asq },
         { label: 'AHT (T.M.O.)', value: analysis.aht },
-        { label: 'Transferidos', value: analysis.totalTransfers },
     ];
 
     resultsDiv.innerHTML = `
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            ${metrics.map(metric => `
-                <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 text-center">
-                    <h3 class="text-lg font-semibold text-slate-600 dark:text-slate-300">${metric.label}</h3>
-                    <p class="text-4xl font-bold text-indigo-600 dark:text-indigo-400 mt-2">${metric.value}</p>
+        <div class="grid gap-8">
+            <div class="lg:col-span-1 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700">
+                <div class="relative h-64 md:h-80 mb-1">
+                    <canvas id="contactVolumeChart"></canvas>
                 </div>
-            `).join('')}
+            </div>
+
+            <div class="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                ${metrics.map(metric => `
+                    <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 text-center">
+                        <h3 class="text-lg font-semibold text-slate-600 dark:text-slate-300">${metric.label}</h3>
+                        <p class="text-4xl font-bold text-indigo-600 dark:text-indigo-400 mt-2">${metric.value}</p>
+                    </div>
+                `).join('')}
+            </div>
         </div>
     `;
+
+    // Llamamos a la nueva función para que dibuje el gráfico
+    renderContactVolumeChart(analysis);
 }

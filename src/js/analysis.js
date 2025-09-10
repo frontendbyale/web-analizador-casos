@@ -233,8 +233,8 @@ export function processYearlyAnalysis(allCleanData) {
 }
 
 /**
- * --- FUNCIÓN ACTUALIZADA ---
- * Procesa los datos de sesiones para calcular métricas de Contact Center, incluyendo ASQ.
+ * --- VERSIÓN ACTUALIZADA ---
+ * Procesa los datos incluyendo los chats transferidos en la base del Service Level.
  */
 export function processContactCenterAnalysis(data) {
     const validSessions = data.filter(row => row['Id Sesión'] && row['Id Sesión'].trim() !== '');
@@ -244,44 +244,51 @@ export function processContactCenterAnalysis(data) {
     let totalTransfers = 0;
     let totalHandleTime = 0;
 
-    // Variables para promedios (Sumas y Conteos)
+    // Variables para promedios (solo de chats atendidos)
     let asqSum = 0, asqCount = 0;
     let asaSum = 0, asaCount = 0;
-    let slCount = 0, slMet = 0;
+    
+    // --- NUEVAS VARIABLES PARA SERVICE LEVEL ---
+    let slBaseCount = 0; // El denominador: chats atendidos + transferidos con datos
+    let slMetCount = 0;  // El numerador: los que cumplen el umbral
 
     validSessions.forEach(session => {
         const answeredCount = parseInt(session['Conversaciones cerradas'], 10);
+        const waitTimeQueue = parseFloat(session['Espera en cola']);
+        const waitTimeAgent = parseFloat(session['Espera agente']);
 
-        // --- NUEVA LÓGICA DE CLASIFICACIÓN ---
+        // --- LÓGICA DE SERVICE LEVEL (SE APLICA PRIMERO) ---
+        // Un chat es elegible para el cálculo de SL si tiene ambos tiempos de espera.
+        if (!isNaN(waitTimeQueue) && !isNaN(waitTimeAgent)) {
+            const totalWait = waitTimeQueue + waitTimeAgent;
+            const serviceLevelThreshold = 60;
+            
+            // Determinamos cuántos chats de esta sesión se suman a la base del SL
+            const chatsInSessionForSL = answeredCount > 0 ? answeredCount : 1;
+            slBaseCount += chatsInSessionForSL;
+
+            if (totalWait <= serviceLevelThreshold) {
+                slMetCount += chatsInSessionForSL;
+            }
+        }
+
+        // --- LÓGICA DE CLASIFICACIÓN Y OTROS PROMEDIOS ---
         if (answeredCount > 0) {
-            // Si hay conversaciones cerradas, la sesión cuenta como ATENDIDA.
+            // Si se cerró, es "Atendido"
             totalChatsAnswered += answeredCount;
             totalHandleTime += (parseFloat(session['Conversación con agente']) || 0) * answeredCount;
 
-            const waitTimeQueue = parseFloat(session['Espera en cola']); // ASQ
-            const waitTimeAgent = parseFloat(session['Espera agente']); // ASA
-
-            // Calcular ASQ solo si hay dato
+            // ASA y ASQ solo se calculan sobre chats atendidos
             if (!isNaN(waitTimeQueue)) {
                 asqSum += waitTimeQueue * answeredCount;
                 asqCount += answeredCount;
             }
-            // Calcular ASA solo si hay dato
             if (!isNaN(waitTimeAgent)) {
                 asaSum += waitTimeAgent * answeredCount;
                 asaCount += answeredCount;
             }
-            // Calcular Service Level solo si ambos datos existen
-            if (!isNaN(waitTimeQueue) && !isNaN(waitTimeAgent)) {
-                const totalWait = waitTimeQueue + waitTimeAgent;
-                const serviceLevelThreshold = 60;
-                slCount += answeredCount;
-                if (totalWait <= serviceLevelThreshold) {
-                    slMet += answeredCount;
-                }
-            }
         } else {
-            // Si no hay conversaciones cerradas, la sesión cuenta como TRANSFERIDA.
+            // Si no se cerró, es "Transferido"
             totalTransfers++;
         }
     });
@@ -290,8 +297,7 @@ export function processContactCenterAnalysis(data) {
     const asq = asqCount > 0 ? asqSum / asqCount : 0;
     const asa = asaCount > 0 ? asaSum / asaCount : 0;
     const aht = totalChatsAnswered > 0 ? totalHandleTime / totalChatsAnswered : 0;
-    const serviceLevel = slCount > 0 ? (slMet / slCount) * 100 : 0;
-
+    const serviceLevel = slBaseCount > 0 ? (slMetCount / slBaseCount) * 100 : 0; // Usamos la nueva base
     const totalChats = totalChatsAnswered + totalTransfers;
 
     const formatTime = (seconds) => {

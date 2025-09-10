@@ -14,6 +14,7 @@ let lastGeneralAnalysis = null;
 let lastWeeklyAnalysis = null;
 let lastEscalationAnalysis = null;
 let lastYearlyAnalysis = null;
+let lastContactCenterAnalysis = null;
 
 /**
  * Aplica el tema (claro/oscuro) y actualiza los gráficos.
@@ -35,6 +36,8 @@ function applyTheme(isDark) {
     if (lastWeeklyAnalysis) displayWeeklyResults(lastWeeklyAnalysis);
     if (lastEscalationAnalysis) displayEscalationResults(lastEscalationAnalysis);
     if (lastYearlyAnalysis) renderYearlyCharts(lastYearlyAnalysis);
+    if (lastContactCenterAnalysis) displayContactCenterResults(lastContactCenterAnalysis);
+    
 }
 
 function runAndDisplayGeneralAnalysis() {
@@ -186,8 +189,8 @@ function setupEventListeners() {
                     try {
                         // Saltamos la segunda fila que contiene descripciones
                         const data = results.data.slice(1);
-                        const analysis = processContactCenterAnalysis(data);
-                        displayContactCenterResults(analysis);
+                        lastContactCenterAnalysis = processContactCenterAnalysis(data);
+                        displayContactCenterResults(lastContactCenterAnalysis);
                     } catch (error) {
                         console.error("Error en análisis de Contact Center:", error);
                     } finally {
