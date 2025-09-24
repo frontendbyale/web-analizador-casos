@@ -9,6 +9,7 @@ let agentChartInstances = {};
 let yearlyChartInstance = null;
 let monthlyChartInstances = [];
 let contactVolumeChartInstance = null;
+let contactAgentChartInstances = {};
 
 
 // =================================================================
@@ -378,6 +379,50 @@ function renderContactVolumeChart(analysis) {
         }
     });
 }
+
+/**
+ * --- NUEVA FUNCIÓN ---
+ * Renderiza un gráfico de barras individual para un agente del Contact Center.
+ * @param {Object} agentData - Los datos de rendimiento del agente.
+ */
+function renderContactAgentChart(agentData) {
+    const canvasId = `contact-agent-chart-${agentData.agent.replace(/\s+/g, '-')}`;
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return;
+
+    if (contactAgentChartInstances[agentData.agent]) {
+        contactAgentChartInstances[agentData.agent].destroy();
+    }
+    
+    const isDarkMode = document.documentElement.classList.contains('dark');
+    const chartFontColor = isDarkMode ? '#cbd5e1' : '#475569';
+    const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+    
+    contactAgentChartInstances[agentData.agent] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['ASQ', 'ASA', 'AHT'],
+            datasets: [{
+                label: 'Segundos',
+                data: [agentData.asq, agentData.asa, agentData.aht],
+                backgroundColor: ['rgba(79, 70, 229, 0.7)', 'rgba(30, 64, 175, 0.7)', 'rgba(5, 150, 105, 0.7)'],
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                title: { display: true, text: 'Tiempos Promedio (en segundos)', color: chartFontColor, font: { size: 12 } }
+            },
+            scales: {
+                x: { ticks: { color: chartFontColor }, grid: { color: 'transparent' } },
+                y: { beginAtZero: true, ticks: { color: chartFontColor }, grid: { color: gridColor } }
+            }
+        }
+    });
+}
+
 
 
 // =================================================================
@@ -806,31 +851,38 @@ export function displayYearlyResults(analysis) {
 
 
 /**
- * Muestra los resultados del análisis de Contact Center.
+ * --- FUNCIÓN DEFINITIVA ---
+ * Muestra el dashboard completo del Contact Center: KPIs, gráfico de volumen y desglose por agente.
  */
 export function displayContactCenterResults(analysis) {
     const resultsDiv = document.getElementById('resultsContact');
     if (!resultsDiv) return;
 
+    const { general, agentPerformance } = analysis;
+    const formatTime = (seconds) => {
+        const minutes = Math.floor(seconds / 60);
+        const secs = Math.round(seconds % 60);
+        return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    };
+
     const metrics = [
-        { label: 'Total de Chats', value: analysis.totalChats },
-        { label: 'Chats Atendidos', value: analysis.totalChatsAnswered },
-        { label: 'Transferidos', value: analysis.totalTransfers },
-        { label: 'Service Level (60s)', value: analysis.serviceLevel },
-        { label: 'ASA (Espera 1er msj)', value: analysis.asa },
-        { label: 'ASQ (Espera en cola)', value: analysis.asq },
-        { label: 'AHT (T.M.O.)', value: analysis.aht },
+        { label: 'Total de Chats', value: general.totalChats },
+        { label: 'Atendidos', value: general.totalChatsAnswered },
+        { label: 'Transferidos', value: general.totalTransfers },
+        { label: 'Service Level (60s)', value: `${general.serviceLevel.toFixed(1)}%` },
+        { label: 'ASQ (Espera cola)', value: formatTime(general.asq) },
+        { label: 'ASA (Espera 1er msj)', value: formatTime(general.asa) },
+        { label: 'AHT (T.M.O.)', value: formatTime(general.aht) },
     ];
 
     resultsDiv.innerHTML = `
-        <div class="grid gap-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
             <div class="lg:col-span-1 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700">
-                <div class="relative h-64 md:h-80 mb-1">
+                <div class="relative h-80">
                     <canvas id="contactVolumeChart"></canvas>
                 </div>
             </div>
-
-            <div class="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2 grid grid-cols-2 md:grid-cols-3 gap-6">
                 ${metrics.map(metric => `
                     <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 text-center">
                         <h3 class="text-lg font-semibold text-slate-600 dark:text-slate-300">${metric.label}</h3>
@@ -839,8 +891,38 @@ export function displayContactCenterResults(analysis) {
                 `).join('')}
             </div>
         </div>
+
+        <div>
+            <h2 class="text-2xl font-bold text-slate-700 dark:text-slate-200 mt-8 mb-4">Rendimiento Detallado por Agente</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                ${agentPerformance.map(agent => `
+                    <div class="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 space-y-4">
+                        <div>
+                            <h3 class="text-xl font-bold text-indigo-700 dark:text-indigo-400 truncate">${agent.agent}</h3>
+                            <p class="text-sm text-slate-500 dark:text-slate-400">${agent.cola}</p>
+                        </div>
+                        <div class="relative h-48">
+                            <canvas id="contact-agent-chart-${agent.agent.replace(/\s+/g, '-')}"></canvas>
+                        </div>
+                        <table class="w-full text-sm">
+                            <tbody>
+                                <tr class="border-b border-slate-200 dark:border-slate-700"><td class="py-1.5 font-medium text-slate-600 dark:text-slate-400">Atendidos</td><td class="py-1.5 font-mono text-right font-semibold text-slate-800 dark:text-slate-200">${agent.answeredChats}</td></tr>
+                                <tr class="border-b border-slate-200 dark:border-slate-700"><td class="py-1.5 font-medium text-slate-600 dark:text-slate-400">Transferidos</td><td class="py-1.5 font-mono text-right font-semibold text-slate-800 dark:text-slate-200">${agent.transfers}</td></tr>
+                                <tr class="border-b border-slate-200 dark:border-slate-700"><td class="py-1.5 font-medium text-slate-600 dark:text-slate-400">Nivel de Servicio</td><td class="py-1.5 font-mono text-right font-semibold text-slate-800 dark:text-slate-200">${agent.serviceLevel.toFixed(1)}%</td></tr>
+                                <tr class="border-b border-slate-200 dark:border-slate-700"><td class="py-1.5 font-medium text-slate-600 dark:text-slate-400">ASQ</td><td class="py-1.5 font-mono text-right font-semibold text-slate-800 dark:text-slate-200">${formatTime(agent.asq)}</td></tr>
+                                <tr class="border-b border-slate-200 dark:border-slate-700"><td class="py-1.5 font-medium text-slate-600 dark:text-slate-400">ASA</td><td class="py-1.5 font-mono text-right font-semibold text-slate-800 dark:text-slate-200">${formatTime(agent.asa)}</td></tr>
+                                <tr class="border-b border-slate-200 dark:border-slate-700"><td class="py-1.5 font-medium text-slate-600 dark:text-slate-400">AHT</td><td class="py-1.5 font-mono text-right font-semibold text-slate-800 dark:text-slate-200">${formatTime(agent.aht)}</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
     `;
 
-    // Llamamos a la nueva función para que dibuje el gráfico
-    renderContactVolumeChart(analysis);
+    // Renderizamos todos los gráficos
+    renderContactVolumeChart(general);
+    agentPerformance.forEach(agent => {
+        renderContactAgentChart(agent);
+    });
 }

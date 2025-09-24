@@ -233,86 +233,82 @@ export function processYearlyAnalysis(allCleanData) {
 }
 
 /**
- * --- VERSIÓN ACTUALIZADA ---
- * Procesa los datos incluyendo los chats transferidos en la base del Service Level.
+ * --- VERSIÓN DEFINITIVA Y COMPLETA ---
+ * Procesa los datos, calcula KPIs generales y desglosa un análisis de rendimiento completo por agente.
  */
 export function processContactCenterAnalysis(data) {
     const validSessions = data.filter(row => row['Id Sesión'] && row['Id Sesión'].trim() !== '');
 
-    // Variables para los totales
-    let totalChatsAnswered = 0;
-    let totalTransfers = 0;
-    let totalHandleTime = 0;
-
-    // Variables para promedios (solo de chats atendidos)
-    let asqSum = 0, asqCount = 0;
-    let asaSum = 0, asaCount = 0;
-    
-    // --- NUEVAS VARIABLES PARA SERVICE LEVEL ---
-    let slBaseCount = 0; // El denominador: chats atendidos + transferidos con datos
-    let slMetCount = 0;  // El numerador: los que cumplen el umbral
+    const agentMetrics = {};
 
     validSessions.forEach(session => {
-        const answeredCount = parseInt(session['Conversaciones cerradas'], 10);
-        const waitTimeQueue = parseFloat(session['Espera en cola']);
-        const waitTimeAgent = parseFloat(session['Espera agente']);
-
-        // --- LÓGICA DE SERVICE LEVEL (SE APLICA PRIMERO) ---
-        // Un chat es elegible para el cálculo de SL si tiene ambos tiempos de espera.
-        if (!isNaN(waitTimeQueue) && !isNaN(waitTimeAgent)) {
-            const totalWait = waitTimeQueue + waitTimeAgent;
-            const serviceLevelThreshold = 60;
-            
-            // Determinamos cuántos chats de esta sesión se suman a la base del SL
-            const chatsInSessionForSL = answeredCount > 0 ? answeredCount : 1;
-            slBaseCount += chatsInSessionForSL;
-
-            if (totalWait <= serviceLevelThreshold) {
-                slMetCount += chatsInSessionForSL;
-            }
+        const agentName = session['Nombre Agente'] || 'Sin Nombre';
+        const answeredCount = parseInt(session['Conversaciones cerradas'], 10) || 0;
+        const queue = session['Cola'] || 'N/A';
+        
+        if (!agentMetrics[agentName]) {
+            agentMetrics[agentName] = {
+                answeredChats: 0, transfers: 0, waitTimeQueue: 0, waitTimeAgent: 0,
+                handleTime: 0, slBase: 0, slMet: 0, queues: {}
+            };
         }
 
-        // --- LÓGICA DE CLASIFICACIÓN Y OTROS PROMEDIOS ---
-        if (answeredCount > 0) {
-            // Si se cerró, es "Atendido"
-            totalChatsAnswered += answeredCount;
-            totalHandleTime += (parseFloat(session['Conversación con agente']) || 0) * answeredCount;
+        agentMetrics[agentName].queues[queue] = (agentMetrics[agentName].queues[queue] || 0) + 1;
 
-            // ASA y ASQ solo se calculan sobre chats atendidos
-            if (!isNaN(waitTimeQueue)) {
-                asqSum += waitTimeQueue * answeredCount;
-                asqCount += answeredCount;
-            }
-            if (!isNaN(waitTimeAgent)) {
-                asaSum += waitTimeAgent * answeredCount;
-                asaCount += answeredCount;
-            }
+        if (answeredCount > 0) {
+            agentMetrics[agentName].answeredChats += answeredCount;
+            const waitTimeQueue = parseFloat(session['Espera en cola']) || 0;
+            const waitTimeAgent = parseFloat(session['Espera agente']) || 0;
+            const handleTime = parseFloat(session['Conversación con agente']) || 0;
+            agentMetrics[agentName].waitTimeQueue += waitTimeQueue * answeredCount;
+            agentMetrics[agentName].waitTimeAgent += waitTimeAgent * answeredCount;
+            agentMetrics[agentName].handleTime += handleTime * answeredCount;
         } else {
-            // Si no se cerró, es "Transferido"
-            totalTransfers++;
+            agentMetrics[agentName].transfers++;
+        }
+        
+        const waitTimeQueueForSL = parseFloat(session['Espera en cola']);
+        const waitTimeAgentForSL = parseFloat(session['Espera agente']);
+        if (!isNaN(waitTimeQueueForSL) && !isNaN(waitTimeAgentForSL)) {
+            const totalWait = waitTimeQueueForSL + waitTimeAgentForSL;
+            const chatsInSessionForSL = answeredCount > 0 ? answeredCount : 1;
+            agentMetrics[agentName].slBase += chatsInSessionForSL;
+            if (totalWait <= 60) {
+                agentMetrics[agentName].slMet += chatsInSessionForSL;
+            }
         }
     });
 
-    // Calculamos los promedios finales
-    const asq = asqCount > 0 ? asqSum / asqCount : 0;
-    const asa = asaCount > 0 ? asaSum / asaCount : 0;
-    const aht = totalChatsAnswered > 0 ? totalHandleTime / totalChatsAnswered : 0;
-    const serviceLevel = slBaseCount > 0 ? (slMetCount / slBaseCount) * 100 : 0; // Usamos la nueva base
+    const finalAgentPerformance = Object.keys(agentMetrics).map(agent => {
+        const metrics = agentMetrics[agent];
+        const mainQueue = Object.entries(metrics.queues).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
+        const asq = metrics.answeredChats > 0 ? metrics.waitTimeQueue / metrics.answeredChats : 0;
+        const asa = metrics.answeredChats > 0 ? metrics.waitTimeAgent / metrics.answeredChats : 0;
+        const aht = metrics.answeredChats > 0 ? metrics.handleTime / metrics.answeredChats : 0;
+        const serviceLevel = metrics.slBase > 0 ? (metrics.slMet / metrics.slBase) * 100 : 0;
+        
+        return {
+            agent, cola: mainQueue, answeredChats: metrics.answeredChats, transfers: metrics.transfers,
+            serviceLevel, asq, asa, aht,
+        };
+    });
+    
+    const totalChatsAnswered = finalAgentPerformance.reduce((sum, a) => sum + a.answeredChats, 0);
+    const totalTransfers = finalAgentPerformance.reduce((sum, a) => sum + a.transfers, 0);
     const totalChats = totalChatsAnswered + totalTransfers;
-
-    const formatTime = (seconds) => {
-        const minutes = Math.floor(seconds / 60);
-        const secs = Math.round(seconds % 60);
-        return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    };
+    const totalSlMet = Object.values(agentMetrics).reduce((sum, m) => sum + m.slMet, 0);
+    const totalSlBase = Object.values(agentMetrics).reduce((sum, m) => sum + m.slBase, 0);
+    const overallServiceLevel = totalSlBase > 0 ? (totalSlMet / totalSlBase) * 100 : 0;
+    const overallASQ = totalChatsAnswered > 0 ? Object.values(agentMetrics).reduce((sum, m) => sum + m.waitTimeQueue, 0) / totalChatsAnswered : 0;
+    const overallASA = totalChatsAnswered > 0 ? Object.values(agentMetrics).reduce((sum, m) => sum + m.waitTimeAgent, 0) / totalChatsAnswered : 0;
+    const overallAHT = totalChatsAnswered > 0 ? Object.values(agentMetrics).reduce((sum, m) => sum + m.handleTime, 0) / totalChatsAnswered : 0;
 
     return {
-        totalChats,
-        totalChatsAnswered,
-        totalTransfers,
-        asa: formatTime(asa),
-        asq: formatTime(asq),
-        aht: formatTime(aht),
-        serviceLevel: serviceLevel.toFixed(1) + '%'
+        general: {
+            totalChats, totalChatsAnswered, totalTransfers,
+            serviceLevel: overallServiceLevel,
+            asa: overallASA, asq: overallASQ, aht: overallAHT,
+        },
+        agentPerformance: finalAgentPerformance
     };
 }
