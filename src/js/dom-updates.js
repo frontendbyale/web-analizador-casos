@@ -870,6 +870,8 @@ export function displayContactCenterResults(analysis) {
         { label: 'Atendidos', value: general.totalChatsAnswered },
         { label: 'Transferidos', value: general.totalTransfers },
         { label: 'Service Level (60s)', value: `${general.serviceLevel.toFixed(1)}%` },
+        { label: 'Dentro de SL', value: general.slMet },
+        { label: 'Fuera de SL', value: general.slNotMet },
         { label: 'ASQ (Espera cola)', value: formatTime(general.asq) },
         { label: 'ASA (Espera 1er msj)', value: formatTime(general.asa) },
         { label: 'AHT (T.M.O.)', value: formatTime(general.aht) },
@@ -882,11 +884,11 @@ export function displayContactCenterResults(analysis) {
                     <canvas id="contactVolumeChart"></canvas>
                 </div>
             </div>
-            <div class="lg:col-span-2 grid grid-cols-2 md:grid-cols-3 gap-6">
+            <div class="lg:col-span-2 grid grid-cols-3 gap-6">
                 ${metrics.map(metric => `
                     <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 text-center">
                         <h3 class="text-lg font-semibold text-slate-600 dark:text-slate-300">${metric.label}</h3>
-                        <p class="text-4xl font-bold text-indigo-600 dark:text-indigo-400 mt-2">${metric.value}</p>
+                        <p class="text-3xl lg:text-4xl font-bold text-indigo-600 dark:text-indigo-400 mt-2">${metric.value}</p>
                     </div>
                 `).join('')}
             </div>
@@ -908,7 +910,9 @@ export function displayContactCenterResults(analysis) {
                             <tbody>
                                 <tr class="border-b border-slate-200 dark:border-slate-700"><td class="py-1.5 font-medium text-slate-600 dark:text-slate-400">Atendidos</td><td class="py-1.5 font-mono text-right font-semibold text-slate-800 dark:text-slate-200">${agent.answeredChats}</td></tr>
                                 <tr class="border-b border-slate-200 dark:border-slate-700"><td class="py-1.5 font-medium text-slate-600 dark:text-slate-400">Transferidos</td><td class="py-1.5 font-mono text-right font-semibold text-slate-800 dark:text-slate-200">${agent.transfers}</td></tr>
-                                <tr class="border-b border-slate-200 dark:border-slate-700"><td class="py-1.5 font-medium text-slate-600 dark:text-slate-400">Nivel de Servicio</td><td class="py-1.5 font-mono text-right font-semibold text-slate-800 dark:text-slate-200">${agent.serviceLevel.toFixed(1)}%</td></tr>
+                                <tr class="border-b border-slate-200 dark:border-slate-700"><td class="py-1.5 font-medium text-slate-600 dark:text-slate-400">Nivel de Servicio</td><td class="py-1.5 font-mono text-right font-semibold text-slate-800 dark:text-slate-200">${agent.serviceLevel}</td></tr>
+                                <tr class="border-b border-slate-200 dark:border-slate-700"><td class="py-1.5 font-medium text-slate-600 dark:text-slate-400">Dentro de SL</td><td class="py-1.5 font-mono text-right font-semibold text-slate-800 dark:text-slate-200">${agent.slMet}</td></tr>
+                                <tr class="border-b border-slate-200 dark:border-slate-700"><td class="py-1.5 font-medium text-slate-600 dark:text-slate-400">Fuera de SL</td><td class="py-1.5 font-mono text-right font-semibold text-slate-800 dark:text-slate-200">${agent.slNotMet}</td></tr>
                                 <tr class="border-b border-slate-200 dark:border-slate-700"><td class="py-1.5 font-medium text-slate-600 dark:text-slate-400">ASQ</td><td class="py-1.5 font-mono text-right font-semibold text-slate-800 dark:text-slate-200">${formatTime(agent.asq)}</td></tr>
                                 <tr class="border-b border-slate-200 dark:border-slate-700"><td class="py-1.5 font-medium text-slate-600 dark:text-slate-400">ASA</td><td class="py-1.5 font-mono text-right font-semibold text-slate-800 dark:text-slate-200">${formatTime(agent.asa)}</td></tr>
                                 <tr class="border-b border-slate-200 dark:border-slate-700"><td class="py-1.5 font-medium text-slate-600 dark:text-slate-400">AHT</td><td class="py-1.5 font-mono text-right font-semibold text-slate-800 dark:text-slate-200">${formatTime(agent.aht)}</td></tr>
@@ -920,7 +924,6 @@ export function displayContactCenterResults(analysis) {
         </div>
     `;
 
-    // Renderizamos todos los gráficos
     renderContactVolumeChart(general);
     agentPerformance.forEach(agent => {
         renderContactAgentChart(agent);

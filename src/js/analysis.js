@@ -244,7 +244,6 @@ export function processContactCenterAnalysis(data) {
     validSessions.forEach(session => {
         const agentName = session['Nombre Agente'] || 'Sin Nombre';
         const answeredCount = parseInt(session['Conversaciones cerradas'], 10) || 0;
-        const queue = session['Cola'] || 'N/A';
         
         if (!agentMetrics[agentName]) {
             agentMetrics[agentName] = {
@@ -253,16 +252,13 @@ export function processContactCenterAnalysis(data) {
             };
         }
 
-        agentMetrics[agentName].queues[queue] = (agentMetrics[agentName].queues[queue] || 0) + 1;
+        agentMetrics[agentName].queues[session['Cola'] || 'N/A'] = (agentMetrics[agentName].queues[session['Cola'] || 'N/A'] || 0) + 1;
 
         if (answeredCount > 0) {
             agentMetrics[agentName].answeredChats += answeredCount;
-            const waitTimeQueue = parseFloat(session['Espera en cola']) || 0;
-            const waitTimeAgent = parseFloat(session['Espera agente']) || 0;
-            const handleTime = parseFloat(session['Conversación con agente']) || 0;
-            agentMetrics[agentName].waitTimeQueue += waitTimeQueue * answeredCount;
-            agentMetrics[agentName].waitTimeAgent += waitTimeAgent * answeredCount;
-            agentMetrics[agentName].handleTime += handleTime * answeredCount;
+            agentMetrics[agentName].waitTimeQueue += (parseFloat(session['Espera en cola']) || 0) * answeredCount;
+            agentMetrics[agentName].waitTimeAgent += (parseFloat(session['Espera agente']) || 0) * answeredCount;
+            agentMetrics[agentName].handleTime += (parseFloat(session['Conversación con agente']) || 0) * answeredCount;
         } else {
             agentMetrics[agentName].transfers++;
         }
@@ -289,13 +285,15 @@ export function processContactCenterAnalysis(data) {
         
         return {
             agent, cola: mainQueue, answeredChats: metrics.answeredChats, transfers: metrics.transfers,
-            serviceLevel, asq, asa, aht,
+            serviceLevel: serviceLevel.toFixed(1) + '%',
+            slMet: metrics.slMet,
+            slNotMet: metrics.slBase - metrics.slMet,
+            asq, asa, aht,
         };
     });
     
     const totalChatsAnswered = finalAgentPerformance.reduce((sum, a) => sum + a.answeredChats, 0);
     const totalTransfers = finalAgentPerformance.reduce((sum, a) => sum + a.transfers, 0);
-    const totalChats = totalChatsAnswered + totalTransfers;
     const totalSlMet = Object.values(agentMetrics).reduce((sum, m) => sum + m.slMet, 0);
     const totalSlBase = Object.values(agentMetrics).reduce((sum, m) => sum + m.slBase, 0);
     const overallServiceLevel = totalSlBase > 0 ? (totalSlMet / totalSlBase) * 100 : 0;
@@ -305,9 +303,12 @@ export function processContactCenterAnalysis(data) {
 
     return {
         general: {
-            totalChats, totalChatsAnswered, totalTransfers,
+            totalChats: totalChatsAnswered + totalTransfers,
+            totalChatsAnswered, totalTransfers,
             serviceLevel: overallServiceLevel,
-            asa: overallASA, asq: overallASQ, aht: overallAHT,
+            slMet: totalSlMet,
+            slNotMet: totalSlBase - totalSlMet,
+            asq: overallASQ, asa: overallASA, aht: overallAHT,
         },
         agentPerformance: finalAgentPerformance
     };
