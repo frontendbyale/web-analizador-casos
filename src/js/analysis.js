@@ -130,16 +130,56 @@ export function processWeeklyAnalysis(allCleanData) {
     oneWeekAgo.setDate(today.getDate() - 7);
     oneWeekAgo.setHours(0, 0, 0, 0);
 
-    const weeklyCases = allCleanData.filter(c => c['Fecha de Creacion'] >= oneWeekAgo);
-    
-    const claimsByReason = weeklyCases.reduce((acc, caseItem) => {
-        const reason = caseItem['Razón'] || 'No Especificado';
-        if (!acc[reason]) acc[reason] = [];
-        acc[reason].push(caseItem);
-        return acc;
-    }, {});
+    const weeklyCases = allCleanData.filter(c => c['Fecha de Creacion'] && new Date(c['Fecha de Creacion']) >= oneWeekAgo);
 
-    return { claimsByReason, totalClaims: weeklyCases.length, startDate: oneWeekAgo };
+    // 2. Datos para el gráfico y la lista de casos (tu estructura actual)
+    const claimsByReason = {};
+    
+    // 3. Datos para el nuevo análisis anidado
+    const nestedAnalysisData = {};
+
+    weeklyCases.forEach(row => {
+        const razon = row['Razón'] || 'N/A';
+        const subrazon = row['Subrazón'] || 'N/A';
+        const diagnostico = row['Diagnóstico'] || 'N/A';
+        const solucion = row['Solución'] || 'N/A';
+
+        // --- Lógica para el gráfico y la lista de casos (tu formato) ---
+        if (!claimsByReason[razon]) {
+            claimsByReason[razon] = []; // Tu estructura: un array de casos
+        }
+        claimsByReason[razon].push(row); // Tu estructura: pushear el 'row' completo
+
+        // --- Lógica para el nuevo análisis anidado ---
+        const diagSolKey = `${diagnostico} | ${solucion}`;
+        if (!nestedAnalysisData[razon]) nestedAnalysisData[razon] = {};
+        if (!nestedAnalysisData[razon][subrazon]) nestedAnalysisData[razon][subrazon] = {};
+        if (!nestedAnalysisData[razon][subrazon][diagSolKey]) {
+            nestedAnalysisData[razon][subrazon][diagSolKey] = 0;
+        }
+        nestedAnalysisData[razon][subrazon][diagSolKey]++;
+    });
+
+    // Procesamos el análisis anidado para ordenarlo
+    const sortedNestedAnalysis = {};
+    Object.keys(nestedAnalysisData).forEach(razon => {
+        sortedNestedAnalysis[razon] = {};
+        Object.keys(nestedAnalysisData[razon]).forEach(subrazon => {
+            const diagSolCounts = nestedAnalysisData[razon][subrazon];
+            const sortedDiagSol = Object.entries(diagSolCounts)
+                .map(([key, count]) => ({ key, count }))
+                .sort((a, b) => b.count - a.count);
+            sortedNestedAnalysis[razon][subrazon] = sortedDiagSol;
+        });
+    });
+
+    // Devolvemos todo junto
+    return {
+        claimsByReason, // Tu estructura original
+        nestedAnalysis: sortedNestedAnalysis, // La nueva estructura
+        totalClaims: weeklyCases.length,
+        startDate: oneWeekAgo // Mantenemos el startDate
+    };
 }
 
 export function processTopStats(data) {

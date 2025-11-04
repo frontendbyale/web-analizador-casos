@@ -599,42 +599,111 @@ export function displayGeneralResults(analysis, monthName, year) {
 }
 
 /**
+ * --- NUEVA FUNCIÓN HELPER ---
+ * Genera el HTML para el acordeón de análisis anidado.
+ */
+function generateClaimsAccordionHtml(analysis) {
+    const razones = Object.keys(analysis).sort();
+    if (razones.length === 0) return '';
+
+    console.log(razones)
+
+    return razones.map(razon => {
+        const subrazones = analysis[razon];
+        const subrazonKeys = Object.keys(subrazones).sort();
+
+        console.log(analysis)
+
+        const subrazonHtml = subrazonKeys.map(subrazon => {
+            const diagSolList = subrazones[subrazon];
+            
+            const tableHtml = `
+                <table class="w-full text-sm mt-2">
+                    <thead class="bg-slate-100 dark:bg-slate-700"><tr class="text-slate-600 dark:text-slate-300">
+                        <th class="p-2 text-left font-semibold">Diagnóstico y Solución</th>
+                        <th class="p-2 text-right font-semibold">Cantidad</th>
+                    </tr></thead>
+                    <tbody>
+                        ${diagSolList.map(item => {
+                            const [diagnostico, solucion] = item.key.split(' | ');
+                            return `
+                                <tr class="border-b border-slate-200 dark:border-slate-700">
+                                    <td class="p-2">
+                                        <p class="font-medium text-slate-800 dark:text-slate-200">${diagnostico}</p>
+                                        <p class="text-xs text-slate-600 dark:text-slate-400">${solucion}</p>
+                                    </td>
+                                    <td class="p-2 text-right font-mono font-semibold text-slate-800 dark:text-slate-200">${item.count}</td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            `;
+
+            return `
+                <details class="bg-slate-50 dark:bg-slate-800 rounded-lg overflow-hidden mb-2">
+                    <summary class="p-3 font-semibold text-slate-700 dark:text-slate-200 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700">${subrazon}</summary>
+                    <div class="p-3 border-t border-slate-200 dark:border-slate-700">${tableHtml}</div>
+                </details>
+            `;
+        }).join('');
+
+        return `
+            <details class="w-full bg-white dark:bg-slate-900 shadow-lg rounded-xl overflow-hidden mb-4 border border-slate-200 dark:border-slate-700">
+                <summary class="p-4 text-xl font-bold text-indigo-700 dark:text-indigo-400 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800">${razon}</summary>
+                <div class="p-4 border-t border-slate-200 dark:border-slate-700">${subrazonHtml}</div>
+            </details>
+        `;
+    }).join('');
+}
+
+
+/**
  * Muestra los resultados del análisis semanal en la página.
  * @param {Object} analysis - El análisis semanal.
  */
-export function displayWeeklyResults(analysis) {
-    const { claimsByReason, totalClaims, startDate } = analysis;
-    const resultsDivWeek = document.getElementById('resultsWeek');
-    if (!resultsDivWeek) return;
-    
+export function displayWeeklyResults(analysisData) {
+    const resultsDiv = document.getElementById('resultsWeek');
+    if (!resultsDiv) return;
+
+    // Desestructuramos el objeto que viene de 'processWeeklyAnalysis'
+    const { claimsByReason, nestedAnalysis, totalClaims, startDate } = analysisData;
+
     const startDateString = startDate.toLocaleDateString('es-ES', { day: '2-digit', month: 'long' });
 
     if (totalClaims === 0) {
-        resultsDivWeek.innerHTML = `<p class="text-center text-slate-600 dark:text-slate-400">No se encontraron reclamos desde el ${startDateString}.</p>`;
+        resultsDiv.innerHTML = `<p class="text-center text-slate-600 dark:text-slate-400">No se encontraron reclamos desde el ${startDateString}.</p>`;
         return;
     }
 
-    resultsDivWeek.innerHTML = `
+    // --- SECCIÓN 1: TU CÓDIGO ORIGINAL (GRÁFICO Y LISTA DE CASOS) ---
+    // (Basado en tu screenshot 'image_ac4e6b.png')
+    const originalViewHtml = `
         <div class="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700">
             <h2 class="text-2xl font-bold text-slate-700 dark:text-slate-200 mb-4">
                 ${totalClaims} Reclamos desde el ${startDateString}
             </h2>
-            <div class="relative h-80 lg:h-96 mb-2">
+            <div class="relative h-80 lg:h-96 mb-8">
                 <canvas id="weeklyAnalysisChart"></canvas>
             </div>
+            
+            <h3 class="text-xl font-bold text-slate-700 dark:text-slate-200 mb-4">Desglose por Razón (Lista de Casos)</h3>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 ${Object.entries(claimsByReason).map(([reason, cases]) => `
-                    <div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700">
+                    <div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow border border-slate-200 dark:border-slate-700">
                         <h3 class="text-lg font-bold text-indigo-700 dark:text-indigo-400 mb-2">
-                            ${reason} <span class="text-sm font-normal text-slate-500 dark:text-slate-400">(${cases.length})</span>
+                            ${reason}
+                            <span class="text-sm font-normal text-slate-500 dark:text-slate-400">(${cases.length} casos)</span>
                         </h3>
                         <ul class="text-sm space-y-1 max-h-48 overflow-y-auto pr-2">
                             ${cases.map(c => {
-                                const creationDate = c['Fecha de Creacion'].toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
-                                // --- CAMBIO CLAVE AQUÍ ---
-                                // 3. Insertamos el HTML del caso directamente
+                                const fechaObj = new Date(c['Fecha de Creacion']);
+                                const creationDate = !isNaN(fechaObj) 
+                                    ? fechaObj.toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                                    : 'Fecha N/A';
+                                
                                 return `
-                                    <li class="text-slate-700 dark:text-slate-300">
+                                     <li class="text-slate-700 dark:text-slate-300">
                                         <span class="font-semibold text-slate-500 dark:text-slate-400">${creationDate}</span> - 
                                         <strong>Case #${c['caseHtml'] || `Case #${c['Nro de Case']}`}:</strong> ${c['Subrazón'] || 'Sin subrazón'}
                                     </li>
@@ -647,7 +716,20 @@ export function displayWeeklyResults(analysis) {
         </div>
     `;
 
-    // Llamamos a la nueva función para renderizar el gráfico de barras
+    // --- SECCIÓN 2: NUEVO ANÁLISIS ANIDADO (ACORDEÓN) ---
+    const nestedViewHtml = `
+        <div class="mt-12">
+            <h2 class="text-2xl font-bold text-slate-700 dark:text-slate-200 mb-4">
+                Análisis por Diagnóstico y Solución
+            </h2>
+            ${generateClaimsAccordionHtml(nestedAnalysis)}
+        </div>
+    `;
+
+    // Unimos ambas vistas
+    resultsDiv.innerHTML = originalViewHtml + nestedViewHtml;
+
+    // Llamamos a la función para renderizar el gráfico de barras (como en tu screenshot)
     renderWeeklyChart(claimsByReason);
 }
 
