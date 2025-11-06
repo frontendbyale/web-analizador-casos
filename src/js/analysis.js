@@ -141,8 +141,8 @@ export function processWeeklyAnalysis(allCleanData) {
     weeklyCases.forEach(row => {
         const razon = row['Razón'] || 'N/A';
         const subrazon = row['Subrazón'] || 'N/A';
-        const diagnostico = row['Diagnóstico'] || 'N/A';
-        const solucion = row['Solución'] || 'N/A';
+        const diagnostico = row['Diagnóstico'] || 'Reclamo aun abierto';
+        const solucion = row['Solución'] || 'Reclamo aun abierto';
 
         // --- Lógica para el gráfico y la lista de casos (tu formato) ---
         if (!claimsByReason[razon]) {
