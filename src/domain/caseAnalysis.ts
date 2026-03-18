@@ -1,10 +1,11 @@
-// src/js/analysis.js
-
 /**
- * Limpia y prepara los datos crudos del CSV.
- * Convierte fechas, extrae números de caso, y elimina duplicados.
+ * --- DOMINIO: ANÁLISIS DE DATOS ---
+ * Funciones puras para el procesamiento y análisis de casos.
  */
-export function prepareData(rawData) {
+
+import type { TCase, TGeneralAnalysis } from "./types";
+
+export function prepareData(rawData: any[]): TCase[] {
     const processedData = rawData.map(row => ({
         ...row,
         'caseHtml': row['Nro. Case'],
@@ -16,17 +17,15 @@ export function prepareData(rawData) {
     const validData = processedData.filter(row => 
         row['Nro de Case'] && 
         row['Fecha de Creacion'] instanceof Date && 
-        !isNaN(row['Fecha de Creacion'])
+        !isNaN(row['Fecha de Creacion'].getTime())
     );
     
-    return Array.from(new Map(validData.map(item => [item['Nro de Case'], item])).values());
+    // Eliminar duplicados por Nro de Case
+    return Array.from(new Map(validData.map(item => [item['Nro de Case'], item])).values()) as TCase[];
 }
 
-/**
- * Extrae una lista única de agentes del conjunto de datos.
- */
-export function getAgentsFromData(data) {
-    const agentSet = new Set();
+export function getAgentsFromData(data: any[]): string[] {
+    const agentSet = new Set<string>();
     const serviceAccount = "service-account-abe26a47";
     data.forEach(row => {
         if (row['Empleado Creación'] && row['Empleado Creación'] !== serviceAccount) agentSet.add(row['Empleado Creación']);
@@ -36,12 +35,10 @@ export function getAgentsFromData(data) {
     return Array.from(agentSet).sort();
 }
 
-/**
- * Procesa los datos para el análisis general.
- */
-export function processGeneralAnalysis(filteredData, selectedAgents) {
+export function analyzeGeneralCases(filteredData: TCase[], selectedAgents: string[]): TGeneralAnalysis {
+    console.log("Ejecutando analyzeGeneralCases v2 con agentes:", selectedAgents);
     const timeBuckets = ['Menos de 24hs', 'Entre 24hs y 48hs', 'Entre 48hs y 72hs', 'Más de 72hs'];
-    const getTimeBucket = (hours) => {
+    const getTimeBucket = (hours: number) => {
         if (hours <= 24) return timeBuckets[0]; if (hours <= 48) return timeBuckets[1];
         if (hours <= 72) return timeBuckets[2]; return timeBuckets[3];
     };
@@ -54,13 +51,13 @@ export function processGeneralAnalysis(filteredData, selectedAgents) {
         if (!acc[model]) acc[model] = [];
         acc[model].push(c);
         return acc;
-    }, {});
+    }, {} as any);
 
-    const resolutionByModel = {};
+    const resolutionByModel: Record<string, Record<string, number>> = {};
     for (const model in casesByModel) {
         const stats = createStatObject();
-        casesByModel[model].forEach(c => {
-            if (c['Fecha de Cierre'] instanceof Date && !isNaN(c['Fecha de Cierre'])) {
+        casesByModel[model].forEach((c: any) => {
+            if (c['Fecha de Cierre'] instanceof Date && !isNaN(c['Fecha de Cierre'].getTime())) {
                 const diffHours = (c['Fecha de Cierre'].getTime() - c['Fecha de Creacion'].getTime()) / 3600000;
                 stats[getTimeBucket(diffHours)]++;
             }
@@ -69,7 +66,7 @@ export function processGeneralAnalysis(filteredData, selectedAgents) {
     }
 
     const openCases = filteredData.filter(c => c['Estado Case'] !== 'Closed');
-    const openCasesAssignedTo = Object.fromEntries(selectedAgents.map(agent => [agent, 0]));
+    const openCasesAssignedTo: Record<string, number> = Object.fromEntries(selectedAgents.map(agent => [agent, 0]));
     openCases.forEach(c => {
         if (selectedAgents.includes(c['Usuario Asignado'])) {
             openCasesAssignedTo[c['Usuario Asignado']]++;
@@ -78,38 +75,72 @@ export function processGeneralAnalysis(filteredData, selectedAgents) {
     
     const webUser = "service-account-abe26a47";
     const webCreatedCases = filteredData.filter(c => c['Empleado Creación'] === webUser);
-    const webCasesClosedByAgent = Object.fromEntries(selectedAgents.map(agent => [agent, 0]));
+    const webCreatedClosed = webCreatedCases.filter(c => c['Estado Case'] === 'Closed');
+    const webCreatedOpen = webCreatedCases.filter(c => c['Estado Case'] !== 'Closed');
+
+    const webCreatedDetails = {
+        total: webCreatedCases.length,
+        closed: webCreatedClosed.length,
+        open: webCreatedOpen.length,
+        perAgent: Object.fromEntries(selectedAgents.map(agent => [agent, { assigned: 0, closed: 0 }]))
+    };
+
     webCreatedCases.forEach(c => {
-        if (c['Estado Case'] === 'Closed' && selectedAgents.includes(c['Empleado Cierre'])) {
-            webCasesClosedByAgent[c['Empleado Cierre']]++;
+        if (c['Estado Case'] === 'Closed') {
+            if (selectedAgents.includes(c['Empleado Cierre'])) {
+                webCreatedDetails.perAgent[c['Empleado Cierre']].closed++;
+            }
+        } else {
+            if (selectedAgents.includes(c['Usuario Asignado'])) {
+                webCreatedDetails.perAgent[c['Usuario Asignado']].assigned++;
+            }
         }
     });
 
-    const overallAgentActivity = Object.fromEntries(selectedAgents.map(agent => [agent, { created: 0, closed: 0 }]));
+    const agentCreatedDetails: Record<string, { created: number; closed: number; open: number }> = Object.fromEntries(selectedAgents.map(agent => [agent, { created: 0, closed: 0, open: 0 }]));
+    const overallAgentActivity: Record<string, { created: number; closed: number }> = Object.fromEntries(selectedAgents.map(agent => [agent, { created: 0, closed: 0 }]));
+
     filteredData.forEach(c => {
-        if (selectedAgents.includes(c['Empleado Creación'])) overallAgentActivity[c['Empleado Creación']].created++;
-        if (c['Estado Case'] === 'Closed' && selectedAgents.includes(c['Empleado Cierre'])) overallAgentActivity[c['Empleado Cierre']].closed++;
+        const creator = c['Empleado Creación'];
+        const closer = c['Empleado Cierre'];
+
+        if (selectedAgents.includes(creator)) {
+            agentCreatedDetails[creator].created++;
+            overallAgentActivity[creator].created++;
+            if (c['Estado Case'] === 'Closed') {
+                agentCreatedDetails[creator].closed++;
+            } else {
+                agentCreatedDetails[creator].open++;
+            }
+        }
+
+        if (c['Estado Case'] === 'Closed' && selectedAgents.includes(closer)) {
+            overallAgentActivity[closer].closed++;
+        }
     });
 
-    const overallClosureStats = createStatObject();
+    const overallClosureStats: Record<string, number> = createStatObject();
     closedCases.forEach(c => {
-        if (c['Fecha de Cierre'] instanceof Date && !isNaN(c['Fecha de Cierre'])) {
+        if (c['Fecha de Cierre'] instanceof Date && !isNaN(c['Fecha de Cierre'].getTime())) {
             const diffHours = (c['Fecha de Cierre'].getTime() - c['Fecha de Creacion'].getTime()) / 3600000;
             overallClosureStats[getTimeBucket(diffHours)]++;
         }
     });
 
-    const agentPerformance = Object.fromEntries(selectedAgents.map(agent => [agent, { totalClosed: 0, overall: createStatObject(), byReason: {} }]));
+    const agentPerformance: Record<string, { totalClosed: number; overall: Record<string, number>; byReason: Record<string, { total: number; stats: Record<string, number>; model: string }> }> = Object.fromEntries(selectedAgents.map(agent => [agent, { totalClosed: 0, overall: createStatObject(), byReason: {} } as any]));
     closedCases.forEach(c => {
         const closer = c['Empleado Cierre'];
-        if (!selectedAgents.includes(closer) || !(c['Fecha de Cierre'] instanceof Date) || isNaN(c['Fecha de Cierre'])) return;
+        if (!selectedAgents.includes(closer) || !(c['Fecha de Cierre'] instanceof Date) || isNaN(c['Fecha de Cierre'].getTime())) return;
         const diffHours = (c['Fecha de Cierre'].getTime() - c['Fecha de Creacion'].getTime()) / 3600000;
         const bucket = getTimeBucket(diffHours);
         const reason = c['Razón'] || 'No Especificado';
+        const model = c['Modelo Comercial'] || 'No Especificado';
+        
         agentPerformance[closer].totalClosed++;
         agentPerformance[closer].overall[bucket]++;
+        
         if (!agentPerformance[closer].byReason[reason]) {
-            agentPerformance[closer].byReason[reason] = { total: 0, stats: createStatObject() };
+            agentPerformance[closer].byReason[reason] = { total: 0, stats: createStatObject(), model: model };
         }
         agentPerformance[closer].byReason[reason].total++;
         agentPerformance[closer].byReason[reason].stats[bucket]++;
@@ -117,14 +148,15 @@ export function processGeneralAnalysis(filteredData, selectedAgents) {
 
     return { 
         filteredCases: filteredData, closedCases, openCases, openCasesAssignedTo,
-        webCreatedCasesCount: webCreatedCases.length, webCasesClosedByAgent,
+        webCreatedCasesCount: webCreatedCases.length,
         overallAgentActivity, overallClosureStats, agentPerformance,
-        resolutionByModel
+        resolutionByModel,
+        webCreatedDetails,
+        agentCreatedDetails
     };
 }
 
-
-export function processWeeklyAnalysis(allCleanData) {
+export function processWeeklyAnalysis(allCleanData: TCase[]) {
     const today = new Date();
     const oneWeekAgo = new Date(today);
     oneWeekAgo.setDate(today.getDate() - 7);
@@ -132,11 +164,8 @@ export function processWeeklyAnalysis(allCleanData) {
 
     const weeklyCases = allCleanData.filter(c => c['Fecha de Creacion'] && new Date(c['Fecha de Creacion']) >= oneWeekAgo);
 
-    // 2. Datos para el gráfico y la lista de casos (tu estructura actual)
-    const claimsByReason = {};
-    
-    // 3. Datos para el nuevo análisis anidado
-    const nestedAnalysisData = {};
+    const claimsByReason: Record<string, TCase[]> = {};
+    const nestedAnalysisData: any = {};
 
     weeklyCases.forEach(row => {
         const razon = row['Razón'] || 'N/A';
@@ -144,13 +173,11 @@ export function processWeeklyAnalysis(allCleanData) {
         const diagnostico = row['Diagnóstico'] || 'Reclamo aun abierto';
         const solucion = row['Solución'] || 'Reclamo aun abierto';
 
-        // --- Lógica para el gráfico y la lista de casos (tu formato) ---
         if (!claimsByReason[razon]) {
-            claimsByReason[razon] = []; // Tu estructura: un array de casos
+            claimsByReason[razon] = [];
         }
-        claimsByReason[razon].push(row); // Tu estructura: pushear el 'row' completo
+        claimsByReason[razon].push(row);
 
-        // --- Lógica para el nuevo análisis anidado ---
         const diagSolKey = `${diagnostico} | ${solucion}`;
         if (!nestedAnalysisData[razon]) nestedAnalysisData[razon] = {};
         if (!nestedAnalysisData[razon][subrazon]) nestedAnalysisData[razon][subrazon] = {};
@@ -160,29 +187,27 @@ export function processWeeklyAnalysis(allCleanData) {
         nestedAnalysisData[razon][subrazon][diagSolKey]++;
     });
 
-    // Procesamos el análisis anidado para ordenarlo
-    const sortedNestedAnalysis = {};
+    const sortedNestedAnalysis: any = {};
     Object.keys(nestedAnalysisData).forEach(razon => {
         sortedNestedAnalysis[razon] = {};
         Object.keys(nestedAnalysisData[razon]).forEach(subrazon => {
             const diagSolCounts = nestedAnalysisData[razon][subrazon];
             const sortedDiagSol = Object.entries(diagSolCounts)
-                .map(([key, count]) => ({ key, count }))
+                .map(([key, count]) => ({ key, count: count as number }))
                 .sort((a, b) => b.count - a.count);
             sortedNestedAnalysis[razon][subrazon] = sortedDiagSol;
         });
     });
 
-    // Devolvemos todo junto
     return {
-        claimsByReason, // Tu estructura original
-        nestedAnalysis: sortedNestedAnalysis, // La nueva estructura
+        claimsByReason,
+        nestedAnalysis: sortedNestedAnalysis,
         totalClaims: weeklyCases.length,
-        startDate: oneWeekAgo // Mantenemos el startDate
+        startDate: oneWeekAgo
     };
 }
 
-export function processTopStats(data) {
+export function processTopStats(data: TCase[]) {
     const closedCasesWithChildren = data.filter(c => 
         c['Estado Case'] === 'Closed' &&
         c['Nro. Case Hijo'] && 
@@ -193,41 +218,40 @@ export function processTopStats(data) {
         if (!acc[segment]) acc[segment] = [];
         acc[segment].push(c);
         return acc;
-    }, {});
-    const topClientsBySegment = {};
+    }, {} as any);
+    const topClientsBySegment: any = {};
     for (const segment in casesBySegment) {
-        const clientCounts = casesBySegment[segment].reduce((acc, c) => {
+        const clientCounts = casesBySegment[segment].reduce((acc: any, c: any) => {
             const client = c['Cliente'] || 'No especificado';
             if (!acc[client]) acc[client] = { cases: [], segment: c['Segmento Comercial'] };
             acc[client].cases.push(c.caseHtml || `Case #${c['Nro de Case']}`);
             return acc;
-        }, {});
+        }, {} as any);
         topClientsBySegment[segment] = Object.entries(clientCounts)
-            .sort(([, a], [, b]) => b.cases.length - a.cases.length).slice(0, 10)
-            .map(([client, data], index) => ({
+            .sort(([, a]: any, [, b]: any) => b.cases.length - a.cases.length).slice(0, 10)
+            .map(([client, data]: any, index) => ({
                 rank: index + 1, client, count: data.cases.length, cases: data.cases, segment: data.segment
             }));
     }
-    const diagnosisData = closedCasesWithChildren.reduce((acc, c) => {
+    const diagnosisData = closedCasesWithChildren.reduce((acc: any, c: any) => {
         const diagnosis = c['Diagnóstico'] || 'No Especificado';
         const solution = c['Solución'] || 'Sin solución detallada';
         if (!acc[diagnosis]) acc[diagnosis] = { count: 0, solutions: {} };
         acc[diagnosis].count++;
         acc[diagnosis].solutions[solution] = (acc[diagnosis].solutions[solution] || 0) + 1;
         return acc;
-    }, {});
+    }, {} as any);
     const topDiagnosticos = Object.entries(diagnosisData)
-        .sort(([, a], [, b]) => b.count - a.count).slice(0, 5)
-        .map(([diagnosis, data], index) => ({
+        .sort(([, a]: any, [, b]: any) => b.count - a.count).slice(0, 5)
+        .map(([diagnosis, data]: any, index) => ({
             rank: index + 1, diagnosis, count: data.count,
-            solutions: Object.entries(data.solutions).sort(([, a], [, b]) => b - a)
+            solutions: Object.entries(data.solutions).sort(([, a]: any, [, b]: any) => b - a)
         }));
     const allSegments = Object.keys(topClientsBySegment).sort();
     return { allSegments, topClientsBySegment, topDiagnosticos };
 }
 
-
-export function processEscalationAnalysis(data) {
+export function processEscalationAnalysis(data: TCase[]) {
     const parentCases = data.filter(c => {
         const childCaseHtml = c['Nro. Case Hijo'];
         return typeof childCaseHtml === 'string' && />(\d+)</.test(childCaseHtml);
@@ -237,29 +261,28 @@ export function processEscalationAnalysis(data) {
         childCase: c['Nro. Case Hijo'],
         destinationBandeja: c['Bandeja hijo'] || 'No especificada'
     }));
-    const bandejaCounts = parentCases.reduce((acc, c) => {
+    const bandejaCounts = parentCases.reduce((acc: any, c: any) => {
         const bandeja = c['Bandeja hijo'] || 'No especificada';
         acc[bandeja] = (acc[bandeja] || 0) + 1;
         return acc;
-    }, {});
+    }, {} as any);
     return { escalatedCasesList, bandejaCounts };
 }
 
-
-export function processYearlyAnalysis(allCleanData) {
+export function processYearlyAnalysis(allCleanData: TCase[]) {
     const currentYear = new Date().getFullYear();
     const timeBuckets = ['Menos de 24hs', 'Entre 24hs y 48hs', 'Entre 48hs y 72hs', 'Más de 72hs'];
-    const getTimeBucket = (hours) => {
+    const getTimeBucket = (hours: number) => {
         if (hours <= 24) return timeBuckets[0]; if (hours <= 48) return timeBuckets[1];
         if (hours <= 72) return timeBuckets[2]; return timeBuckets[3];
     };
     const closedCasesThisYear = allCleanData.filter(c => 
         c['Estado Case'] === 'Closed' && 
         c['Fecha de Cierre'] instanceof Date && 
-        !isNaN(c['Fecha de Cierre']) && 
+        !isNaN(c['Fecha de Cierre'].getTime()) && 
         c['Fecha de Cierre'].getFullYear() === currentYear
     );
-    const monthlyData = {
+    const monthlyData: any = {
         'Menos de 24hs': Array(12).fill(0), 'Entre 24hs y 48hs': Array(12).fill(0),
         'Entre 48hs y 72hs': Array(12).fill(0), 'Más de 72hs': Array(12).fill(0)
     };
@@ -272,14 +295,10 @@ export function processYearlyAnalysis(allCleanData) {
     return { monthlyData, year: currentYear };
 }
 
-/**
- * --- VERSIÓN DEFINITIVA Y COMPLETA ---
- * Procesa los datos, calcula KPIs generales y desglosa un análisis de rendimiento completo por agente.
- */
-export function processContactCenterAnalysis(data) {
+export function processContactCenterAnalysis(data: any[]) {
     const validSessions = data.filter(row => row['Id Sesión'] && row['Id Sesión'].trim() !== '');
 
-    const agentMetrics = {};
+    const agentMetrics: any = {};
 
     validSessions.forEach(session => {
         const agentName = session['Nombre Agente'] || 'Sin Nombre';
@@ -288,7 +307,7 @@ export function processContactCenterAnalysis(data) {
         if (!agentMetrics[agentName]) {
             agentMetrics[agentName] = {
                 answeredChats: 0, transfers: 0, waitTimeQueue: 0, waitTimeAgent: 0,
-                handleTime: 0, slBase: 0, slMet: 0, queues: {}
+                handleTime: 0, slBase: 0, slMet: 0, queues: {} as any
             };
         }
 
@@ -317,7 +336,7 @@ export function processContactCenterAnalysis(data) {
 
     const finalAgentPerformance = Object.keys(agentMetrics).map(agent => {
         const metrics = agentMetrics[agent];
-        const mainQueue = Object.entries(metrics.queues).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
+        const mainQueue = Object.entries(metrics.queues as any).sort((a: any, b: any) => b[1] - a[1])[0]?.[0] || 'N/A';
         const asq = metrics.answeredChats > 0 ? metrics.waitTimeQueue / metrics.answeredChats : 0;
         const asa = metrics.answeredChats > 0 ? metrics.waitTimeAgent / metrics.answeredChats : 0;
         const aht = metrics.answeredChats > 0 ? metrics.handleTime / metrics.answeredChats : 0;
@@ -334,12 +353,12 @@ export function processContactCenterAnalysis(data) {
     
     const totalChatsAnswered = finalAgentPerformance.reduce((sum, a) => sum + a.answeredChats, 0);
     const totalTransfers = finalAgentPerformance.reduce((sum, a) => sum + a.transfers, 0);
-    const totalSlMet = Object.values(agentMetrics).reduce((sum, m) => sum + m.slMet, 0);
-    const totalSlBase = Object.values(agentMetrics).reduce((sum, m) => sum + m.slBase, 0);
+    const totalSlMet = Object.values(agentMetrics).reduce((sum: number, m: any) => sum + m.slMet, 0);
+    const totalSlBase = Object.values(agentMetrics).reduce((sum: number, m: any) => sum + m.slBase, 0);
     const overallServiceLevel = totalSlBase > 0 ? (totalSlMet / totalSlBase) * 100 : 0;
-    const overallASQ = totalChatsAnswered > 0 ? Object.values(agentMetrics).reduce((sum, m) => sum + m.waitTimeQueue, 0) / totalChatsAnswered : 0;
-    const overallASA = totalChatsAnswered > 0 ? Object.values(agentMetrics).reduce((sum, m) => sum + m.waitTimeAgent, 0) / totalChatsAnswered : 0;
-    const overallAHT = totalChatsAnswered > 0 ? Object.values(agentMetrics).reduce((sum, m) => sum + m.handleTime, 0) / totalChatsAnswered : 0;
+    const overallASQ = totalChatsAnswered > 0 ? Object.values(agentMetrics).reduce((sum: number, m: any) => sum + m.waitTimeQueue, 0) / totalChatsAnswered : 0;
+    const overallASA = totalChatsAnswered > 0 ? Object.values(agentMetrics).reduce((sum: number, m: any) => sum + m.waitTimeAgent, 0) / totalChatsAnswered : 0;
+    const overallAHT = totalChatsAnswered > 0 ? Object.values(agentMetrics).reduce((sum: number, m: any) => sum + m.handleTime, 0) / totalChatsAnswered : 0;
 
     return {
         general: {

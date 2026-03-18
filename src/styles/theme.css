@@ -1,0 +1,49 @@
+/* src/styles/theme.css */
+:root {
+  --background: 0 0% 100%;
+  --foreground: 222.2 47.4% 11.2%;
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 47.4% 11.2%;
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 47.4% 11.2%;
+  --primary: 221.2 83.2% 53.3%; /* Similar a indigo-600 */
+  --primary-foreground: 210 40% 98%;
+  --secondary: 142.1 76.2% 36.3%; /* Similar a green-600 */
+  --secondary-foreground: 210 40% 98%;
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+  --destructive: 0 91.0% 51.0%; /* Similar a red-600 */
+  --destructive-foreground: 210 40% 98%;
+  --ring: 215 20.2% 65.1%;
+  --radius: 0.5rem; /* Base para border-radius */
+  --warning: 38 92% 50%; /* Similar a amber-600 */
+  --warning-foreground: 222.2 47.4% 11.2%;
+}
+
+.dark {
+  --background: 224 71.4% 4.1%;
+  --foreground: 210 40% 98%;
+  --muted: 215 27.9% 16.9%;
+  --muted-foreground: 217.9 10.6% 64.5%;
+  --popover: 224 71.4% 4.1%;
+  --popover-foreground: 210 40% 98%;
+  --border: 215 27.9% 16.9%;
+  --input: 215 27.9% 16.9%;
+  --card: 224 71.4% 4.1%;
+  --card-foreground: 210 40% 98%;
+  --primary: 217.2 91.2% 59.8%; /* Indigo-400 para dark mode */
+  --primary-foreground: 224 71.4% 4.1%;
+  --secondary: 142.1 70.6% 45.3%; /* Green-400 para dark mode */
+  --secondary-foreground: 210 40% 98%;
+  --accent: 215 27.9% 16.9%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 210 40% 98%;
+  --ring: 216 12.2% 83.9%;
+  --warning: 48 96% 89%; /* Amber-300 para dark mode */
+  --warning-foreground: 222.2 47.4% 11.2%;
+}
