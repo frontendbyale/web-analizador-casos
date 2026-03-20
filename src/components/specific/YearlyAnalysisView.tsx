@@ -28,10 +28,10 @@ export function YearlyAnalysisView({ analysis }: YearlyAnalysisViewProps) {
 
   const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
   const colors = {
-    emerald: isDarkMode ? '#34d399' : '#10b981',
-    indigo: isDarkMode ? '#818cf8' : '#4f46e5',
-    amber: isDarkMode ? '#fbbf24' : '#f59e0b',
-    sky: isDarkMode ? '#38bdf8' : '#0ea5e9',
+    emerald: isDarkMode ? '#10B981' : '#18864B',
+    indigo: isDarkMode ? '#6B82F6' : '#2943A3',
+    amber: isDarkMode ? '#F59E0B' : '#E59200',
+    sky: isDarkMode ? '#0EA5E9' : '#0284C7',
     grid: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
     text: isDarkMode ? '#f8fafc' : '#0f172a'
   }

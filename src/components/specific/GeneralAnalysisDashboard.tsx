@@ -32,13 +32,13 @@ export function GeneralAnalysisDashboard({ analysis, monthName, year }: GeneralA
     )
   }
 
-  // Bento Enterprise Palette for Charts
+  // Colores Vibrantes alineados con el sistema Bento Enterprise
   const colors = {
-    indigo: isDarkMode ? '#818cf8' : '#4f46e5',
-    emerald: isDarkMode ? '#34d399' : '#10b981',
-    amber: isDarkMode ? '#fbbf24' : '#f59e0b',
-    sky: isDarkMode ? '#38bdf8' : '#0ea5e9',
-    slate: isDarkMode ? '#94a3b8' : '#64748b',
+    indigo: isDarkMode ? '#6B82F6' : '#2943A3',
+    emerald: isDarkMode ? '#10B981' : '#18864B',
+    amber: isDarkMode ? '#F59E0B' : '#E59200',
+    sky: isDarkMode ? '#0EA5E9' : '#0284C7',
+    slate: isDarkMode ? '#94A3B8' : '#64748B',
   }
 
   const downloadProcessedCsv = () => {
@@ -74,12 +74,16 @@ export function GeneralAnalysisDashboard({ analysis, monthName, year }: GeneralA
     labels: Object.keys(analysis.overallClosureStats),
     datasets: [{
       data: Object.values(analysis.overallClosureStats),
-      backgroundColor: [colors.indigo, colors.emerald, colors.amber, colors.sky],
+      backgroundColor: [colors.emerald, colors.indigo, colors.amber, colors.sky],
       borderColor: isDarkMode ? '#09090b' : '#ffffff',
-      borderWidth: 2,
-      hoverOffset: 4
+      borderWidth: 3,
+      hoverOffset: 6
     }]
   }
+
+  const totalClosedStats = Object.values(analysis.overallClosureStats).reduce((a, b) => a + b, 0);
+  const lessThan24h = Object.values(analysis.overallClosureStats)[0] || 0;
+  const slaPercentage = totalClosedStats > 0 ? ((lessThan24h / totalClosedStats) * 100).toFixed(1) : 0;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 max-w-[1600px] mx-auto pb-12">
@@ -188,6 +192,7 @@ export function GeneralAnalysisDashboard({ analysis, monthName, year }: GeneralA
               options={{
                 responsive: true,
                 maintainAspectRatio: false,
+                cutout: '65%',
                 plugins: { 
                   legend: { 
                     position: 'bottom',
@@ -196,6 +201,16 @@ export function GeneralAnalysisDashboard({ analysis, monthName, year }: GeneralA
                 },
               }} 
             />
+            {/* Texto en el centro del Donut */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-[-20px]">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Éxito SLA</span>
+              <span className="text-3xl font-black text-brand-emerald mt-0.5">
+                {slaPercentage}%
+              </span>
+              <span className="text-[10px] text-muted-foreground font-medium bg-muted px-2 py-0.5 rounded-full mt-1">
+                {lessThan24h} en {'<'} 24hs
+              </span>
+            </div>
           </div>
         </div>
 
