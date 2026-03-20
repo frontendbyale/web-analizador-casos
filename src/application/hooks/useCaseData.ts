@@ -57,19 +57,13 @@ export function useCaseData() {
         const selected = Array.from(closingAgents).sort()
         setSelectedAgents(selected)
         
-        // Análisis Inicial (PROCESAR TODO DE UNA VEZ)
-        const general = analyzeGeneralCases(filtered, selected)
-        const weekly = processWeeklyAnalysis(cleaned)
-        const topStats = processTopStats(filtered)
-        const escalation = processEscalationAnalysis(filtered)
-        const yearly = processYearlyAnalysis(cleaned)
-        
+        // Ejecutar TODOS los procesos analíticos
         setAnalysisResults({
-          general,
-          weekly,
-          topStats,
-          escalation,
-          yearly,
+          general: analyzeGeneralCases(filtered, selected),
+          weekly: processWeeklyAnalysis(cleaned),
+          topStats: processTopStats(filtered),
+          escalation: processEscalationAnalysis(filtered),
+          yearly: processYearlyAnalysis(cleaned),
           contactCenter: null
         })
         
@@ -103,38 +97,16 @@ export function useCaseData() {
     })
   }, [])
 
-  // Ejecutar otros análisis bajo demanda
-  const runWeeklyAnalysis = React.useCallback(() => {
-    if (!allCleanData) return
-    const weekly = processWeeklyAnalysis(allCleanData)
-    setAnalysisResults(prev => ({ ...prev, weekly }))
-  }, [allCleanData])
-
-  const runTopStats = React.useCallback(() => {
-    if (!filteredData) return
-    const topStats = processTopStats(filteredData)
-    setAnalysisResults(prev => ({ ...prev, topStats }))
-  }, [filteredData])
-
-  const runEscalationAnalysis = React.useCallback(() => {
-    if (!filteredData) return
-    const escalation = processEscalationAnalysis(filteredData)
-    setAnalysisResults(prev => ({ ...prev, escalation }))
-  }, [filteredData])
-
-  const runYearlyAnalysis = React.useCallback(() => {
-    if (!allCleanData) return
-    const yearly = processYearlyAnalysis(allCleanData)
-    setAnalysisResults(prev => ({ ...prev, yearly }))
-  }, [allCleanData])
-
-  // Actualizar análisis general cuando cambian los agentes seleccionados
+  // Sincronizar análisis general cuando cambian los agentes seleccionados
+  // sin destruir los resultados de las otras pestañas
   React.useEffect(() => {
-    if (filteredData) {
-      const general = analyzeGeneralCases(filteredData, selectedAgents)
-      setAnalysisResults(prev => ({ ...prev, general }))
+    if (filteredData && filteredData.length > 0) {
+      setAnalysisResults(prev => ({
+        ...prev,
+        general: analyzeGeneralCases(filteredData, selectedAgents)
+      }))
     }
-  }, [selectedAgents, filteredData])
+  }, [selectedAgents])
 
   return {
     allAgents,
@@ -143,10 +115,6 @@ export function useCaseData() {
     analysisResults,
     isLoading,
     processCasesFile,
-    processContactCenterFile,
-    runWeeklyAnalysis,
-    runTopStats,
-    runEscalationAnalysis,
-    runYearlyAnalysis
+    processContactCenterFile
   }
 }

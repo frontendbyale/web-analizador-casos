@@ -1,49 +1,80 @@
 /* src/styles/theme.css */
 :root {
-  --background: 0 0% 100%;
+  /* Fondo general gris muy suave (slate-50) para destacar las tarjetas */
+  --background: 210 40% 98%;
   --foreground: 222.2 47.4% 11.2%;
+  
   --muted: 210 40% 96.1%;
   --muted-foreground: 215.4 16.3% 46.9%;
+  
   --popover: 0 0% 100%;
   --popover-foreground: 222.2 47.4% 11.2%;
+  
   --border: 214.3 31.8% 91.4%;
   --input: 214.3 31.8% 91.4%;
+  
+  /* Tarjetas blanco puro */
   --card: 0 0% 100%;
   --card-foreground: 222.2 47.4% 11.2%;
-  --primary: 221.2 83.2% 53.3%; /* Similar a indigo-600 */
+  
+  /* Colores Corporativos (Trust / Base) */
+  --primary: 226 71% 40%; /* Indigo corporativo oscuro */
   --primary-foreground: 210 40% 98%;
-  --secondary: 142.1 76.2% 36.3%; /* Similar a green-600 */
-  --secondary-foreground: 210 40% 98%;
+  
+  --secondary: 210 40% 96.1%;
+  --secondary-foreground: 222.2 47.4% 11.2%;
+  
   --accent: 210 40% 96.1%;
   --accent-foreground: 222.2 47.4% 11.2%;
-  --destructive: 0 91.0% 51.0%; /* Similar a red-600 */
+  
+  --destructive: 346 87% 60%; /* Rose/Red para errores fatales */
   --destructive-foreground: 210 40% 98%;
-  --ring: 215 20.2% 65.1%;
-  --radius: 0.5rem; /* Base para border-radius */
-  --warning: 38 92% 50%; /* Similar a amber-600 */
-  --warning-foreground: 222.2 47.4% 11.2%;
+  
+  --ring: 226 71% 40%;
+  --radius: 0.75rem;
+
+  /* --- BENTO ENTERPRISE SEMANTICS --- */
+  --brand-indigo: 226 71% 40%; /* Total / Neutral Metrics */
+  --brand-emerald: 152 69% 31%; /* Success / Cerrados */
+  --brand-amber: 38 92% 50%; /* Warning / Abiertos */
+  --brand-sky: 199 89% 48%; /* Info / Web */
 }
 
 .dark {
-  --background: 224 71.4% 4.1%;
+  /* Fondo general zinc profundo */
+  --background: 240 10% 3.9%;
   --foreground: 210 40% 98%;
-  --muted: 215 27.9% 16.9%;
-  --muted-foreground: 217.9 10.6% 64.5%;
-  --popover: 224 71.4% 4.1%;
+  
+  --muted: 240 3.7% 15.9%;
+  --muted-foreground: 240 5% 64.9%;
+  
+  --popover: 240 10% 3.9%;
   --popover-foreground: 210 40% 98%;
-  --border: 215 27.9% 16.9%;
-  --input: 215 27.9% 16.9%;
-  --card: 224 71.4% 4.1%;
+  
+  --border: 240 3.7% 15.9%;
+  --input: 240 3.7% 15.9%;
+  
+  /* Tarjetas sutilmente separadas del fondo */
+  --card: 240 5% 7%;
   --card-foreground: 210 40% 98%;
-  --primary: 217.2 91.2% 59.8%; /* Indigo-400 para dark mode */
-  --primary-foreground: 224 71.4% 4.1%;
-  --secondary: 142.1 70.6% 45.3%; /* Green-400 para dark mode */
+  
+  --primary: 226 71% 65%; /* Indigo más vibrante para contraste oscuro */
+  --primary-foreground: 240 10% 3.9%;
+  
+  --secondary: 240 3.7% 15.9%;
   --secondary-foreground: 210 40% 98%;
-  --accent: 215 27.9% 16.9%;
+  
+  --accent: 240 3.7% 15.9%;
   --accent-foreground: 210 40% 98%;
-  --destructive: 0 62.8% 30.6%;
+  
+  --destructive: 346 87% 60%;
   --destructive-foreground: 210 40% 98%;
-  --ring: 216 12.2% 83.9%;
-  --warning: 48 96% 89%; /* Amber-300 para dark mode */
-  --warning-foreground: 222.2 47.4% 11.2%;
+  
+  --ring: 226 71% 65%;
+
+  /* --- BENTO ENTERPRISE SEMANTICS (Dark) --- */
+  --brand-indigo: 226 71% 65%;
+  --brand-emerald: 152 69% 45%; /* Más vibrante para dark mode */
+  --brand-amber: 38 92% 55%;
+  --brand-sky: 199 89% 55%;
 }

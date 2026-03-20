@@ -1,115 +1,125 @@
 import * as React from "react"
-import { Line, Bar } from "react-chartjs-2"
-import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, BarElement } from "chart.js"
+import { Line } from "react-chartjs-2"
+import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler } from "chart.js"
 import { Card, CardHeader, CardTitle, CardContent } from "../ui/card"
-import { ChartBox } from "../shared/ChartBox"
+import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "../ui/table"
+import { CalendarDays, TrendingUp, Clock } from "lucide-react"
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend)
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler)
 
 interface YearlyAnalysisViewProps {
-  analysis: any
+  analysis: {
+    monthlyData: Record<string, number[]>;
+    year: number;
+  }
 }
 
 export function YearlyAnalysisView({ analysis }: YearlyAnalysisViewProps) {
-  if (!analysis) return null
-
-  const { monthlyData, year } = analysis
-  const labels = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
   const isDarkMode = typeof document !== "undefined" && document.documentElement.classList.contains("dark")
-  const chartFontColor = isDarkMode ? "#cbd5e1" : "#475569"
-  const gridColor = isDarkMode ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)"
   
-  const categoryColors = {
-    'Menos de 24hs': 'rgba(79, 70, 229, 1)', 'Entre 24hs y 48hs': 'rgba(5, 150, 105, 1)',
-    'Entre 48hs y 72hs': 'rgba(217, 119, 6, 1)', 'Más de 72hs': 'rgba(220, 38, 38, 1)'
+  if (!analysis || !analysis.monthlyData) {
+    return (
+      <div className="bento-card p-12 flex flex-col items-center justify-center text-center space-y-4">
+        <div className="p-4 bg-slate-100 dark:bg-zinc-900 rounded-full"><CalendarDays className="w-8 h-8 text-muted-foreground opacity-20" /></div>
+        <p className="text-sm text-muted-foreground max-w-xs">Carga los datos históricos para ver la comparativa anual.</p>
+      </div>
+    )
   }
 
-  const yearlyChartData = {
-    labels: labels,
-    datasets: Object.keys(monthlyData).map(category => ({
-      label: category, 
-      data: monthlyData[category], 
-      borderColor: categoryColors[category as keyof typeof categoryColors],
-      backgroundColor: categoryColors[category as keyof typeof categoryColors].replace('1)', '0.2)'),
-      fill: false, 
-      tension: 0.3, 
-      pointRadius: 4, 
-      pointBackgroundColor: categoryColors[category as keyof typeof categoryColors],
+  const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
+  const colors = {
+    emerald: isDarkMode ? '#34d399' : '#10b981',
+    indigo: isDarkMode ? '#818cf8' : '#4f46e5',
+    amber: isDarkMode ? '#fbbf24' : '#f59e0b',
+    sky: isDarkMode ? '#38bdf8' : '#0ea5e9',
+    grid: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
+    text: isDarkMode ? '#f8fafc' : '#0f172a'
+  }
+
+  const colorPalette = [colors.emerald, colors.indigo, colors.amber, colors.sky]
+
+  const data = {
+    labels: months,
+    datasets: Object.entries(analysis.monthlyData).map(([label, values], i) => ({
+      label,
+      data: values,
+      borderColor: colorPalette[i % 4],
+      backgroundColor: colorPalette[i % 4] + '15', // Relleno suave bajo la línea
+      fill: true,
+      tension: 0.4, // Curva suave
+      pointRadius: 4,
+      pointHoverRadius: 6,
+      borderWidth: 3
     }))
   }
 
-  const activeMonths: number[] = []
-  for (let i = 0; i < 12; i++) {
-    const totalForMonth = Object.values(monthlyData).reduce((sum: any, categoryData: any) => sum + categoryData[i], 0)
-    if (totalForMonth > 0) activeMonths.push(i)
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: 'index' as const, intersect: false },
+    plugins: {
+      legend: {
+        position: 'top' as const,
+        labels: { color: colors.text, usePointStyle: true, font: { size: 11, weight: '600' } }
+      },
+      tooltip: {
+        padding: 12,
+        backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
+        titleColor: isDarkMode ? '#ffffff' : '#0f172a',
+        bodyColor: isDarkMode ? '#cbd5e1' : '#475569',
+        borderColor: colors.grid,
+        borderWidth: 1,
+      }
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: colors.text } },
+      y: { grid: { color: colors.grid }, ticks: { color: colors.text }, beginAtZero: true }
+    }
   }
 
   return (
-    <div className="space-y-12">
-      <Card className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700">
-        <div className="relative h-[500px]">
-          <Line 
-            data={yearlyChartData} 
-            options={{
-              responsive: true, 
-              maintainAspectRatio: false, 
-              interaction: { mode: 'index' as const, intersect: false },
-              plugins: {
-                legend: { position: 'bottom' as const, labels: { color: chartFontColor } },
-                title: { display: true, text: `Evolución de Tiempos de Cierre - ${year}`, color: chartFontColor, font: { size: 18 } }
-              },
-              scales: {
-                x: { ticks: { color: chartFontColor }, grid: { color: gridColor } },
-                y: { ticks: { color: chartFontColor }, grid: { color: gridColor }, beginAtZero: true }
-              }
-            }} 
-          />
-        </div>
-      </Card>
-
-      <div className="space-y-6">
-        <h2 className="text-2xl font-bold text-slate-700 dark:text-slate-200 mb-4">Desglose Mensual</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {activeMonths.map(monthIndex => {
-            const dataForMonth = {
-              ' < 24hs': monthlyData['Menos de 24hs'][monthIndex], 
-              '24-48hs': monthlyData['Entre 24hs y 48hs'][monthIndex],
-              '48-72hs': monthlyData['Entre 48hs y 72hs'][monthIndex], 
-              '> 72hs': monthlyData['Más de 72hs'][monthIndex]
-            }
-            const total = Object.values(dataForMonth).reduce((a: any, b: any) => a + b, 0)
-            
-            return (
-              <ChartBox 
-                key={monthIndex} 
-                title={`${labels[monthIndex]} (Total: ${total})`} 
-                height="h-[250px]"
-                className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700"
-              >
-                <Bar
-                  data={{
-                    labels: Object.keys(dataForMonth),
-                    datasets: [{
-                      label: 'Casos',
-                      data: Object.values(dataForMonth),
-                      backgroundColor: ['rgba(79, 70, 229, 0.7)', 'rgba(5, 150, 105, 0.7)', 'rgba(217, 119, 6, 0.7)', 'rgba(220, 38, 38, 0.7)'],
-                    }]
-                  }}
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                      x: { ticks: { color: chartFontColor, font: { size: 10 } }, grid: { display: false } },
-                      y: { ticks: { color: chartFontColor, precision: 0 }, grid: { color: gridColor }, beginAtZero: true }
-                    }
-                  }}
-                />
-              </ChartBox>
-            )
-          })}
+    <div className="space-y-6 animate-in fade-in duration-500 max-w-[1600px] mx-auto pb-10">
+      <div className="bento-card p-6 flex flex-col md:flex-row items-center justify-between bg-gradient-to-br from-brand-indigo/5 to-transparent">
+        <div className="space-y-1">
+          <h2 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2"><TrendingUp className="w-6 h-6 text-brand-indigo" />Evolución Histórica ({analysis.year})</h2>
+          <p className="text-sm text-muted-foreground">Tendencias de resolución mensual por categorías SLA</p>
         </div>
       </div>
+
+      <Card className="bento-card overflow-hidden">
+        <CardHeader className="bg-slate-50/50 dark:bg-zinc-900/50 border-b border-border/50">
+           <div className="flex items-center justify-between">
+            <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Nivel de Servicio Mensual</CardTitle>
+            <Clock className="w-4 h-4 text-brand-indigo opacity-50" />
+          </div>
+        </CardHeader>
+        <CardContent className="pt-6">
+          <div className="h-[450px] w-full"><Line data={data} options={options} /></div>
+        </CardContent>
+      </Card>
+
+      <Card className="bento-card overflow-hidden">
+        <CardContent className="p-0 overflow-auto custom-scrollbar">
+          <Table>
+            <TableHeader><TableRow className="bg-slate-50 dark:bg-zinc-900 sticky top-0">
+              <TableHead className="pl-6 text-[10px] uppercase font-bold">Mes</TableHead>
+              {Object.keys(analysis.monthlyData).map(k => (<TableHead key={k} className="text-center text-[10px] uppercase font-bold">{k}</TableHead>))}
+            </TableRow></TableHeader>
+            <TableBody>
+              {months.map((m, idx) => (
+                <TableRow key={m} className="hover:bg-slate-50/50 dark:hover:bg-zinc-800/20 border-b border-border/40 transition-colors">
+                  <TableCell className="pl-6 py-3 font-bold text-foreground">{m}</TableCell>
+                  {Object.values(analysis.monthlyData).map((v, i) => (
+                    <TableCell key={i} className="text-center tabular-nums font-medium text-foreground/70">
+                      {v[idx] > 0 ? <span className={`metric-pill ${i === 0 ? 'bg-brand-emerald/10 text-brand-emerald' : 'bg-slate-100 dark:bg-zinc-800'}`}>{v[idx]}</span> : '-'}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   )
 }

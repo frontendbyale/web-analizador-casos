@@ -1,151 +1,137 @@
 import * as React from "react"
-import { Pie, Bar } from "react-chartjs-2"
 import { Card, CardHeader, CardTitle, CardContent } from "../ui/card"
-import { Input } from "../ui/input"
+import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "../ui/table"
 import { Button } from "../ui/button"
+import { Input } from "../ui/input"
 import { Label } from "../ui/label"
-import { Loader2, Phone, MessageSquare, Clock, ShieldCheck, TrendingUp } from "lucide-react"
-import { ChartBox } from "../shared/ChartBox"
+import { Phone, UploadCloud, Loader2, Users, Clock, Hash, CheckCircle2 } from "lucide-react"
 
 interface ContactCenterViewProps {
-  analysis: any
-  onProcessFile: (file: File) => void
-  isLoading: boolean
+  analysis: any;
+  onProcessFile: (file: File) => void;
+  isLoading: boolean;
 }
 
 export function ContactCenterView({ analysis, onProcessFile, isLoading }: ContactCenterViewProps) {
   const [file, setFile] = React.useState<File | null>(null)
 
-  const formatTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const secs = Math.round(seconds % 60);
-    return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
+  const handleProcess = () => {
+    if (file) onProcessFile(file)
+  }
 
-  const isDarkMode = typeof document !== "undefined" && document.documentElement.classList.contains("dark")
-  const chartFontColor = isDarkMode ? "#cbd5e1" : "#475569"
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500 max-w-[1600px] mx-auto pb-10">
+      
+      {/* HEADER & UPLOAD */}
+      <div className="bento-card p-6 flex flex-col md:flex-row items-end justify-between gap-6 bg-gradient-to-r from-brand-blue/5 to-transparent">
+        <div className="space-y-1">
+          <h2 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
+            <Phone className="w-6 h-6 text-brand-blue" />
+            Análisis de Contact Center
+          </h2>
+          <p className="text-sm text-muted-foreground">Procesamiento de registros de llamadas y atención telefónica (TSV)</p>
+        </div>
 
-  if (!analysis) {
-    return (
-      <Card className="bg-white dark:bg-slate-900 shadow-lg border border-slate-200 dark:border-slate-800 p-8">
-        <div className="flex flex-col items-center justify-center space-y-4">
-          <Phone className="h-12 w-12 text-slate-400" />
-          <h3 className="text-xl font-bold">Análisis de Contact Center</h3>
-          <p className="text-slate-500 text-center max-w-md">
-            Cargue el archivo TSV de sesiones para ver el análisis de rendimiento de los agentes y KPIs generales.
-          </p>
-          <div className="flex flex-col w-full max-w-sm space-y-2">
-            <Label htmlFor="tsvFileContact">Archivo TSV de Sesiones</Label>
+        <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
+          <div className="space-y-2">
+            <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Archivo TSV</Label>
             <Input 
-              id="tsvFileContact" 
               type="file" 
               accept=".tsv,.txt" 
               onChange={(e) => setFile(e.target.files?.[0] || null)}
-              className="cursor-pointer"
+              className="bg-card h-10 pt-1.5 border-border/60"
             />
-            <Button 
-              onClick={() => file && onProcessFile(file)} 
-              disabled={isLoading || !file}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-10 mt-2"
-            >
-              {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : "Analizar Sesiones"}
-            </Button>
           </div>
-        </div>
-      </Card>
-    )
-  }
-
-  const { general, agentPerformance } = analysis;
-
-  const metrics = [
-    { label: 'Total de Chats', value: general.totalChats, icon: MessageSquare, color: 'text-indigo-600 dark:text-indigo-400' },
-    { label: 'Atendidos', value: general.totalChatsAnswered, icon: MessageSquare, color: 'text-green-600 dark:text-green-400' },
-    { label: 'Transferidos', value: general.totalTransfers, icon: TrendingUp, color: 'text-amber-600 dark:text-amber-400' },
-    { label: 'Service Level (60s)', value: `${general.serviceLevel.toFixed(1)}%`, icon: ShieldCheck, color: 'text-blue-600 dark:text-blue-400' },
-    { label: 'Dentro de SL', value: general.slMet, icon: ShieldCheck, color: 'text-emerald-600 dark:text-emerald-400' },
-    { label: 'Fuera de SL', value: general.slNotMet, icon: ShieldCheck, color: 'text-rose-600 dark:text-rose-400' },
-    { label: 'ASQ (Espera cola)', value: formatTime(general.asq), icon: Clock, color: 'text-slate-600 dark:text-slate-300' },
-    { label: 'ASA (Espera 1er msj)', value: formatTime(general.asa), icon: Clock, color: 'text-slate-600 dark:text-slate-300' },
-    { label: 'AHT (T.M.O.)', value: formatTime(general.aht), icon: Clock, color: 'text-slate-600 dark:text-slate-300' },
-  ];
-
-  return (
-    <div className="space-y-8">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-        <ChartBox title="Volumen Total de Chats" height="h-[320px]" className="lg:col-span-1 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700">
-          <Pie 
-            data={{
-              labels: ['Atendidos', 'Transferidos'],
-              datasets: [{
-                data: [general.totalChatsAnswered, general.totalTransfers],
-                backgroundColor: ['rgba(79, 70, 229, 0.7)', 'rgba(217, 119, 6, 0.7)'],
-                borderColor: isDarkMode ? '#1e293b' : '#ffffff',
-                borderWidth: 2
-              }]
-            }} 
-            options={{
-              responsive: true,
-              maintainAspectRatio: false,
-              plugins: { legend: { position: 'bottom', labels: { color: chartFontColor } } }
-            }} 
-          />
-        </ChartBox>
-        <div className="lg:col-span-2 grid grid-cols-2 md:grid-cols-3 gap-4">
-          {metrics.map(metric => (
-            <Card key={metric.label} className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 text-center flex flex-col items-center justify-center">
-              <metric.icon className="h-5 w-5 mb-2 opacity-50" />
-              <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-300">{metric.label}</h3>
-              <p className={`text-2xl lg:text-3xl font-bold mt-1 ${metric.color}`}>{metric.value}</p>
-            </Card>
-          ))}
+          <Button 
+            onClick={handleProcess} 
+            disabled={isLoading || !file}
+            className="bg-brand-blue hover:bg-brand-blue/90 text-white font-bold h-10 self-end px-8"
+          >
+            {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <UploadCloud className="w-4 h-4 mr-2" />}
+            Procesar
+          </Button>
         </div>
       </div>
 
-      <div className="space-y-4">
-        <h2 className="text-2xl font-bold text-slate-700 dark:text-slate-200 mb-4">Rendimiento Detallado por Agente</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {agentPerformance.map((agent: any) => (
-            <Card key={agent.agent} className="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 space-y-4">
-              <div>
-                <h3 className="text-xl font-bold text-indigo-700 dark:text-indigo-400 truncate">{agent.agent}</h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400">{agent.cola}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-center">
-                <div className="bg-slate-50 dark:bg-slate-700/50 p-2 rounded-lg">
-                  <div className="text-xs text-slate-500">Atendidos</div>
-                  <div className="font-bold text-lg">{agent.answeredChats}</div>
-                </div>
-                <div className="bg-slate-50 dark:bg-slate-700/50 p-2 rounded-lg">
-                  <div className="text-xs text-slate-500">Service Level</div>
-                  <div className="font-bold text-lg">{agent.serviceLevel}</div>
-                </div>
-              </div>
-              <ChartBox title="Tiempos Promedio (seg)" height="h-[180px]" className="border-0 p-0 shadow-none bg-transparent">
-                <Bar 
-                  data={{
-                    labels: ['ASQ', 'ASA', 'AHT'],
-                    datasets: [{
-                      label: 'Segundos',
-                      data: [agent.asq, agent.asa, agent.aht],
-                      backgroundColor: ['rgba(79, 70, 229, 0.7)', 'rgba(30, 64, 175, 0.7)', 'rgba(5, 150, 105, 0.7)'],
-                    }]
-                  }}
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                      x: { ticks: { color: chartFontColor } },
-                      y: { ticks: { color: chartFontColor }, beginAtZero: true }
-                    }
-                  }}
-                />
-              </ChartBox>
-            </Card>
-          ))}
+      {!analysis ? (
+        <div className="bento-card p-20 flex flex-col items-center justify-center text-center space-y-4 border-dashed border-2">
+          <div className="bg-slate-100 dark:bg-zinc-900 p-4 rounded-full text-brand-blue">
+            <Phone className="w-10 h-10 opacity-20" />
+          </div>
+          <p className="text-muted-foreground font-medium">Carga el reporte de telefonía para ver las métricas de atención.</p>
         </div>
-      </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-6">
+          
+          {/* STATS OVERVIEW */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card className="bento-card p-5">
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3">Total Llamadas</p>
+              <div className="flex items-center justify-between">
+                <h3 className="text-3xl font-black tabular-nums">{analysis.totalCalls}</h3>
+                <div className="p-2 bg-brand-blue/10 rounded-lg text-brand-blue"><Hash className="w-4 h-4" /></div>
+              </div>
+            </Card>
+            
+            <Card className="bento-card p-5">
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3">Atendidas</p>
+              <div className="flex items-center justify-between">
+                <h3 className="text-3xl font-black tabular-nums text-brand-emerald">{analysis.answeredCalls}</h3>
+                <div className="p-2 bg-brand-emerald/10 rounded-lg text-brand-emerald"><CheckCircle2 className="w-4 h-4" /></div>
+              </div>
+            </Card>
+
+            <Card className="bento-card p-5">
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3">Tiempo Promedio</p>
+              <div className="flex items-center justify-between">
+                <h3 className="text-3xl font-black tabular-nums">{analysis.avgDuration}s</h3>
+                <div className="p-2 bg-slate-100 dark:bg-zinc-800 rounded-lg text-muted-foreground"><Clock className="w-4 h-4" /></div>
+              </div>
+            </Card>
+
+            <Card className="bento-card p-5">
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3">SLA Atención</p>
+              <div className="flex items-center justify-between">
+                <h3 className="text-3xl font-black tabular-nums text-brand-blue">
+                  {((analysis.answeredCalls / analysis.totalCalls) * 100).toFixed(0)}%
+                </h3>
+                <div className="p-2 bg-brand-blue/10 rounded-lg text-brand-blue"><Users className="w-4 h-4" /></div>
+              </div>
+            </Card>
+          </div>
+
+          {/* DETAILED TABLE */}
+          <Card className="bento-card overflow-hidden">
+            <CardHeader className="p-4 border-b border-border/50 bg-slate-50/50 dark:bg-zinc-900/50 flex flex-row items-center justify-between">
+              <CardTitle className="text-xs font-bold text-foreground uppercase">Desglose Detallado por Agente / Hora</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0 overflow-auto custom-scrollbar max-h-[500px]">
+              <Table>
+                <TableHeader className="bg-transparent sticky top-0 z-10 bg-white dark:bg-zinc-900 shadow-sm">
+                  <TableRow className="border-b border-border">
+                    <TableHead className="text-[10px] uppercase font-bold pl-6">Agente</TableHead>
+                    <TableHead className="text-[10px] uppercase font-bold text-center">Llamadas</TableHead>
+                    <TableHead className="text-[10px] uppercase font-bold text-center">Promedio Conversación</TableHead>
+                    <TableHead className="text-[10px] uppercase font-bold text-right pr-6">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {analysis.details.map((row: any, i: number) => (
+                    <TableRow key={i} className="hover:bg-slate-50/50 dark:hover:bg-zinc-800/20 transition-colors border-b border-border/40">
+                      <TableCell className="py-3 font-semibold text-xs pl-6 text-foreground/80">{row.agent || 'Desconocido'}</TableCell>
+                      <TableCell className="py-3 text-center tabular-nums font-bold">{row.count}</TableCell>
+                      <TableCell className="py-3 text-center text-xs text-muted-foreground">{row.avgTime || '0:00'}</TableCell>
+                      <TableCell className="py-3 text-right pr-6">
+                        <span className="metric-pill bg-brand-blue/10 text-brand-blue">ACTIVO</span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   )
 }

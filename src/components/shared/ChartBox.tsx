@@ -1,5 +1,6 @@
 import * as React from "react"
 import { Card, CardHeader, CardTitle, CardContent } from "../ui/card"
+import { cn } from "../../lib/utils"
 
 interface ChartBoxProps {
   title: string
@@ -10,9 +11,9 @@ interface ChartBoxProps {
 
 export function ChartBox({ title, children, className, height = "h-[300px]" }: ChartBoxProps) {
   return (
-    <Card className={className}>
+    <Card className={cn("bento-card border-border/50", className)}>
       <CardHeader className="pb-2">
-        <CardTitle className="text-lg font-bold text-slate-700 dark:text-slate-200">
+        <CardTitle className="text-base font-bold text-foreground">
           {title}
         </CardTitle>
       </CardHeader>

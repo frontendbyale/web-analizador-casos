@@ -1,77 +1,97 @@
 import * as React from "react"
-import { Pie } from "react-chartjs-2"
 import { Card, CardHeader, CardTitle, CardContent } from "../ui/card"
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "../ui/table"
-import { ChartBox } from "../shared/ChartBox"
+import { AlertCircle, ArrowUpRight, Share2, History, Layers, ExternalLink } from "lucide-react"
 
 interface EscalationAnalysisViewProps {
-  analysis: any
+  analysis: {
+    escalatedCasesList: any[];
+    bandejaCounts: Record<string, number>;
+  }
 }
 
 export function EscalationAnalysisView({ analysis }: EscalationAnalysisViewProps) {
-  if (!analysis) return null
-
-  const { escalatedCasesList, bandejaCounts } = analysis
-  const isDarkMode = typeof document !== "undefined" && document.documentElement.classList.contains("dark")
-  const chartFontColor = isDarkMode ? "#cbd5e1" : "#475569"
-
-  const chartData = {
-    labels: Object.keys(bandejaCounts),
-    datasets: [{
-      label: '# de Casos',
-      data: Object.values(bandejaCounts),
-      backgroundColor: ['rgba(79, 70, 229, 0.7)', 'rgba(5, 150, 105, 0.7)', 'rgba(217, 119, 6, 0.7)', 'rgba(220, 38, 38, 0.7)', 'rgba(107, 33, 168, 0.7)'],
-      borderColor: isDarkMode ? '#1e293b' : '#ffffff',
-      borderWidth: 2
-    }]
+  if (!analysis || !analysis.escalatedCasesList || analysis.escalatedCasesList.length === 0) {
+    return (
+      <div className="bento-card p-12 flex flex-col items-center justify-center text-center space-y-4">
+        <div className="p-4 bg-slate-100 dark:bg-zinc-900 rounded-full"><Share2 className="w-8 h-8 text-muted-foreground opacity-20" /></div>
+        <div>
+          <h3 className="text-lg font-bold text-foreground">No hay registros de escalamientos</h3>
+          <p className="text-sm text-muted-foreground max-w-xs">No se detectaron casos con tickets hijos o derivaciones en este set de datos.</p>
+        </div>
+      </div>
+    )
   }
 
+  const escalatedCount = analysis.escalatedCasesList.length
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-      <ChartBox title="Distribución de Escalados por Bandeja" height="h-[400px]" className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700">
-        <Pie 
-          data={chartData} 
-          options={{
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              legend: { position: 'bottom', labels: { color: chartFontColor } },
-            }
-          }} 
-        />
-      </ChartBox>
-      
-      <Card className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-2xl shadow-md border border-slate-200 dark:border-slate-700">
-        <h2 className="text-2xl font-bold text-slate-700 dark:text-slate-200 mb-6">Detalle de Escalados ({escalatedCasesList.length})</h2>
-        <div className="max-h-96 overflow-y-auto">
+    <div className="space-y-6 animate-in fade-in duration-500 max-w-[1600px] mx-auto pb-10">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bento-card md:col-span-2 p-6 flex items-center justify-between bg-gradient-to-br from-brand-amber/5 to-transparent">
+          <div className="space-y-1">
+            <h2 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2"><AlertCircle className="w-6 h-6 text-brand-amber" />Análisis de Escalamientos</h2>
+            <p className="text-sm text-muted-foreground">Casos derivados a bandejas de segundo nivel o soporte especializado</p>
+          </div>
+          <div className="text-right">
+             <div className="text-4xl font-black text-brand-amber tabular-nums">{escalatedCount}</div>
+             <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Tickets Escalados</div>
+          </div>
+        </div>
+
+        <div className="bento-card p-6 flex flex-col justify-center">
+          <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">Bandejas de Destino</p>
+          <div className="space-y-2 max-h-[100px] overflow-auto custom-scrollbar">
+            {Object.entries(analysis.bandejaCounts).map(([name, count]) => (
+              <div key={name} className="flex justify-between items-center text-xs">
+                <span className="text-muted-foreground truncate pr-2">{name}</span>
+                <span className="font-bold text-foreground">{count}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <Card className="bento-card overflow-hidden">
+        <CardHeader className="p-4 border-b border-border/50 bg-slate-50/50 dark:bg-zinc-900/50 flex flex-row items-center justify-between">
+          <div className="flex items-center gap-2"><Layers className="w-4 h-4 text-brand-indigo" /><CardTitle className="text-sm font-bold text-foreground uppercase">Registro de Casos Vinculados</CardTitle></div>
+        </CardHeader>
+        <CardContent className="p-0 overflow-auto custom-scrollbar max-h-[600px]">
           <Table>
-            <TableHeader className="bg-slate-200 dark:bg-slate-700 sticky top-0">
-              <TableRow>
-                <TableHead className="p-3 font-semibold">Caso Padre</TableHead>
-                <TableHead className="p-3 font-semibold">Caso Hijo</TableHead>
-                <TableHead className="p-3 font-semibold">Bandeja Destino</TableHead>
+            <TableHeader className="bg-transparent sticky top-0 z-10 bg-white dark:bg-zinc-900 shadow-sm">
+              <TableRow className="border-b border-border">
+                <TableHead className="text-[10px] uppercase font-bold pl-6">Caso Padre</TableHead>
+                <TableHead className="text-[10px] uppercase font-bold text-center">Ticket Hijo</TableHead>
+                <TableHead className="text-[10px] uppercase font-bold">Bandeja Destino</TableHead>
+                <th className="pr-6"></th>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {escalatedCasesList.map((c: any, i: number) => (
-                <TableRow key={i} className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
-                  <TableCell className="p-3 align-top text-slate-600 dark:text-slate-300">
-                    <div dangerouslySetInnerHTML={{ __html: c.parentCase }} />
+              {analysis.escalatedCasesList.map((c: any, index: number) => (
+                <TableRow key={index} className="hover:bg-slate-50/50 dark:hover:bg-zinc-800/20 transition-colors border-b border-border/40 group">
+                  <TableCell className="py-4 pl-6">
+                     <div className="text-xs font-mono font-bold text-foreground/70" dangerouslySetInnerHTML={{ __html: c.parentCase }} />
                   </TableCell>
-                  <TableCell className="p-3 align-top text-slate-600 dark:text-slate-300">
-                    <div dangerouslySetInnerHTML={{ __html: c.childCase }} />
+                  <TableCell className="py-4 text-center">
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-brand-amber/10 text-brand-amber text-[10px] font-black border border-brand-amber/20">
+                      <ExternalLink className="w-3 h-3" />
+                      <div dangerouslySetInnerHTML={{ __html: c.childCase }} />
+                    </div>
                   </TableCell>
-                  <TableCell className="p-3 align-top font-medium text-slate-800 dark:text-slate-300">{c.destinationBandeja}</TableCell>
+                  <TableCell className="py-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-brand-indigo/40"></div>
+                      <span className="text-xs font-semibold text-foreground/90">{c.destinationBandeja}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-4 pr-6 text-right">
+                    <div className="flex items-center justify-end gap-1 text-[10px] font-bold text-muted-foreground uppercase opacity-0 group-hover:opacity-100 transition-opacity cursor-default">Detalles <ArrowUpRight className="w-3 h-3" /></div>
+                  </TableCell>
                 </TableRow>
               ))}
-              {escalatedCasesList.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={3} className="p-4 text-center text-slate-500">No se encontraron casos escalados en este período.</TableCell>
-                </TableRow>
-              )}
             </TableBody>
           </Table>
-        </div>
+        </CardContent>
       </Card>
     </div>
   )
