@@ -296,6 +296,22 @@ export function processYearlyAnalysis(allCleanData: TCase[]) {
 }
 
 export function processContactCenterAnalysis(data: any[]) {
+    const parseTime = (timeStr: any): number => {
+        if (typeof timeStr === 'number') return timeStr;
+        if (!timeStr || typeof timeStr !== 'string') return 0;
+        
+        // Handle HH:MM:SS or MM:SS
+        const parts = timeStr.split(':').map(Number);
+        if (parts.length === 3) {
+            return (parts[0] || 0) * 3600 + (parts[1] || 0) * 60 + (parts[2] || 0);
+        } else if (parts.length === 2) {
+            return (parts[0] || 0) * 60 + (parts[1] || 0);
+        }
+        
+        const parsed = parseFloat(timeStr);
+        return isNaN(parsed) ? 0 : parsed;
+    };
+
     const validSessions = data.filter(row => row['Id Sesión'] && row['Id Sesión'].trim() !== '');
 
     const agentMetrics: any = {};
@@ -315,15 +331,15 @@ export function processContactCenterAnalysis(data: any[]) {
 
         if (answeredCount > 0) {
             agentMetrics[agentName].answeredChats += answeredCount;
-            agentMetrics[agentName].waitTimeQueue += (parseFloat(session['Espera en cola']) || 0) * answeredCount;
-            agentMetrics[agentName].waitTimeAgent += (parseFloat(session['Espera agente']) || 0) * answeredCount;
-            agentMetrics[agentName].handleTime += (parseFloat(session['Conversación con agente']) || 0) * answeredCount;
+            agentMetrics[agentName].waitTimeQueue += parseTime(session['Espera en cola']) * answeredCount;
+            agentMetrics[agentName].waitTimeAgent += parseTime(session['Espera agente']) * answeredCount;
+            agentMetrics[agentName].handleTime += parseTime(session['Conversación con agente']) * answeredCount;
         } else {
             agentMetrics[agentName].transfers++;
         }
         
-        const waitTimeQueueForSL = parseFloat(session['Espera en cola']);
-        const waitTimeAgentForSL = parseFloat(session['Espera agente']);
+        const waitTimeQueueForSL = parseTime(session['Espera en cola']);
+        const waitTimeAgentForSL = parseTime(session['Espera agente']);
         if (!isNaN(waitTimeQueueForSL) && !isNaN(waitTimeAgentForSL)) {
             const totalWait = waitTimeQueueForSL + waitTimeAgentForSL;
             const chatsInSessionForSL = answeredCount > 0 ? answeredCount : 1;
@@ -344,7 +360,7 @@ export function processContactCenterAnalysis(data: any[]) {
         
         return {
             agent, cola: mainQueue, answeredChats: metrics.answeredChats, transfers: metrics.transfers,
-            serviceLevel: serviceLevel.toFixed(1) + '%',
+            serviceLevel: serviceLevel,
             slMet: metrics.slMet,
             slNotMet: metrics.slBase - metrics.slMet,
             asq, asa, aht,
@@ -361,14 +377,26 @@ export function processContactCenterAnalysis(data: any[]) {
     const overallAHT = totalChatsAnswered > 0 ? Object.values(agentMetrics).reduce((sum: number, m: any) => sum + m.handleTime, 0) / totalChatsAnswered : 0;
 
     return {
-        general: {
-            totalChats: totalChatsAnswered + totalTransfers,
-            totalChatsAnswered, totalTransfers,
-            serviceLevel: overallServiceLevel,
-            slMet: totalSlMet,
-            slNotMet: totalSlBase - totalSlMet,
-            asq: overallASQ, asa: overallASA, aht: overallAHT,
-        },
-        agentPerformance: finalAgentPerformance
+        totalCalls: totalChatsAnswered + totalTransfers,
+        answeredCalls: totalChatsAnswered,
+        transfers: totalTransfers,
+        slMet: totalSlMet,
+        slNotMet: totalSlBase - totalSlMet,
+        serviceLevel: overallServiceLevel,
+        avgDuration: Math.round(overallAHT),
+        asa: overallASA,
+        asq: overallASQ,
+        details: finalAgentPerformance.map(a => ({
+            agent: a.agent,
+            count: a.answeredChats,
+            transfers: a.transfers,
+            slMet: a.slMet,
+            slNotMet: a.slNotMet,
+            serviceLevel: a.serviceLevel,
+            aht: a.aht,
+            asa: a.asa,
+            asq: a.asq,
+            avgTime: Math.floor(a.aht / 60) + ":" + (Math.round(a.aht % 60)).toString().padStart(2, '0')
+        }))
     };
 }

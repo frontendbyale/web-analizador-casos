@@ -85,7 +85,7 @@ export function useCaseData() {
       delimiter: "\t",
       complete: (results) => {
         try {
-          const data = results.data.slice(1)
+          const data = results.data
           const contactCenter = processContactCenterAnalysis(data)
           setAnalysisResults(prev => ({ ...prev, contactCenter }))
         } catch (error) {
