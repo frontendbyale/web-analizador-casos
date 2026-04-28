@@ -82,9 +82,13 @@ export function TopStatsView({ analysis }: TopStatsViewProps) {
                   <div className="w-full bg-slate-100 dark:bg-zinc-800 h-1.5 rounded-full overflow-hidden">
                     <div className="bg-brand-amber h-full" style={{ width: `${(d.count / analysis.topDiagnosticos[0].count) * 100}%` }}></div>
                   </div>
-                  <div className="pl-4 border-l border-border/60">
-                    <p className="text-[10px] text-muted-foreground font-bold uppercase mb-1">Solución habitual:</p>
-                    <p className="text-[11px] text-foreground/70 italic leading-snug">{d.solutions[0]?.[0] || 'N/A'}</p>
+                  <div className="pl-4 border-l border-border/60 space-y-2">
+                    <p className="text-[10px] text-muted-foreground font-bold uppercase">Soluciones:</p>
+                    {d.solutions.map(([solution, count]: [string, number], sIdx: number) => (
+                      <p key={sIdx} className="text-xs text-foreground/70 italic leading-snug">
+                        {solution}: <span className="font-semibold">{count} Casos</span>
+                      </p>
+                    ))}
                   </div>
                 </div>
               ))}
@@ -116,7 +120,15 @@ export function TopStatsView({ analysis }: TopStatsViewProps) {
                       {clients.map((c) => (
                         <TableRow key={c.client} className="hover:bg-slate-50/50 dark:hover:bg-zinc-800/20 border-0 transition-colors">
                           <TableCell className="py-3 font-medium text-xs pl-6 text-foreground/80">{c.client}</TableCell>
-                          <TableCell className="py-3 text-right font-bold tabular-nums pr-6 text-foreground">{c.count}</TableCell>
+                          <TableCell className="py-3 text-right pr-6">
+                            <div className="font-bold tabular-nums text-foreground">{c.count}</div>
+                            <div className="text-[10px] text-muted-foreground mt-0.5 flex flex-wrap justify-end gap-x-1">
+                              {c.cases.slice(0, 3).map((caseNum: string, caseIdx: number) => (
+                                <span key={caseIdx} dangerouslySetInnerHTML={{ __html: caseNum }} />
+                              ))}
+                              {c.cases.length > 3 && <span>...</span>}
+                            </div>
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
